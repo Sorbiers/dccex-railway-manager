@@ -23,7 +23,7 @@ function initializeDataFiles(): void {
       port: 3000
     },
     dccex: {
-      host: "192.168.1.100",
+      host: "192.168.4.1",
       port: 2560,
       autoConnect: false
     },

@@ -9,7 +9,7 @@ export interface DccStatus {
 
 export class DccService extends EventEmitter {
   private socket: net.Socket | null = null;
-  private host: string = '192.168.1.100';
+  private host: string = '192.168.4.1';
   private port: number = 2560;
   private status: DccStatus = {
     connected: false,

@@ -44,7 +44,7 @@ export class StateService {
 
   private initWebSocket(): void {
     try {
-      this.ws = new WebSocket('ws://localhost:3000/ws');
+      this.ws = new WebSocket(`ws://${window.location.hostname}:3000/ws`);
 
       this.ws.onopen = () => {
         console.log('WebSocket connected');

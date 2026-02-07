@@ -45,7 +45,7 @@ import { Settings } from '../../models';
           <div class="form-row">
             <mat-form-field>
               <mat-label>Host</mat-label>
-              <input matInput [(ngModel)]="settings.backend.host" placeholder="localhost">
+              <input matInput [(ngModel)]="settings.backend.host" >
             </mat-form-field>
 
             <mat-form-field>
@@ -215,8 +215,8 @@ export class SettingsComponent implements OnInit {
   private snackBar = inject(MatSnackBar);
 
   settings: Settings = {
-    backend: { host: 'localhost', port: 3000 },
-    dccex: { host: '192.168.1.100', port: 2560, autoConnect: true },
+    backend: { host: window.location.hostname, port: 3000 },
+    dccex: { host: '192.168.4.1', port: 2560, autoConnect: true },
     ui: { theme: 'system', showAdvancedControls: false }
   };
 
@@ -241,8 +241,8 @@ export class SettingsComponent implements OnInit {
 
   resetSettings(): void {
     this.settings = {
-      backend: { host: 'localhost', port: 3000 },
-      dccex: { host: '192.168.1.100', port: 2560, autoConnect: true },
+      backend: { host: window.location.hostname, port: 3000 },
+      dccex: { host: '192.168.4.1', port: 2560, autoConnect: true },
       ui: { theme: 'system', showAdvancedControls: false }
     };
   }

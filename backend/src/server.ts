@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
+import * as path from 'path';
+import * as fs from 'fs';
 
 import devicesRouter from './routes/devices';
 import schedulesRouter from './routes/schedules';
@@ -29,6 +31,23 @@ app.use('/api/status', statusRouter);
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Serve frontend static files
+const frontendPath = path.join(__dirname, 'public');
+if (fs.existsSync(frontendPath)) {
+  console.log(`Serving frontend from: ${frontendPath}`);
+  app.use(express.static(frontendPath));
+  // Handle Angular routing - return index.html for all non-API routes
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/ws')) {
+      res.sendFile(path.join(frontendPath, 'index.html'));
+    } else {
+      res.status(404).json({ error: 'Not found' });
+    }
+  });
+} else {
+  console.warn(`Frontend build not found at: ${frontendPath}`);
+}
 
 // Create HTTP server
 const server = createServer(app);

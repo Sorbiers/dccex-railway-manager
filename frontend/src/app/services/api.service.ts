@@ -8,7 +8,7 @@ import { Device, WeeklySchedule, Settings, ApiResponse, ConnectionStatus, DccCom
 })
 export class ApiService {
   private http = inject(HttpClient);
-  private baseUrl = 'http://localhost:3000/api';
+  private baseUrl = `http://${window.location.hostname}:3000/api`;
 
   // Devices
   getDevices(): Observable<Device[]> {
