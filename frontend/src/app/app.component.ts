@@ -1,4 +1,5 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal, effect, PLATFORM_ID, Renderer2 } from '@angular/core';
+import { isPlatformBrowser, DOCUMENT } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,7 +23,7 @@ import { DccService } from './services/dcc.service';
     MatTooltipModule
   ],
   template: `
-    <div class="app-container">
+    <div class="app-container" [class.dark-theme]="isDarkTheme()">
       <mat-toolbar color="primary">
         <span>DCC-EX Control</span>
 
@@ -36,16 +37,10 @@ import { DccService } from './services/dcc.service';
                 matTooltip="DCC-EX {{ state.status().dccex ? 'Connected' : 'Disconnected' }}"></span>
         </div>
 
-        <!-- Power controls -->
-        <div class="power-controls">
-          <button mat-icon-button [color]="state.status().power ? 'accent' : ''" (click)="togglePower()"
-                  matTooltip="{{ state.status().power ? 'Power On' : 'Power Off' }}">
-            <mat-icon>power_settings_new</mat-icon>
-          </button>
-          <button mat-icon-button class="emergency-stop" (click)="emergencyStop()" matTooltip="Emergency Stop">
-            <mat-icon>warning</mat-icon>
-          </button>
-        </div>
+        <!-- Theme toggle -->
+        <button mat-icon-button (click)="toggleTheme()" matTooltip="Toggle Theme">
+          <mat-icon>{{ isDarkTheme() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+        </button>
 
         <!-- Desktop navigation -->
         <nav class="desktop-nav">
@@ -83,6 +78,19 @@ import { DccService } from './services/dcc.service';
         </mat-menu>
       </mat-toolbar>
 
+      <!-- Power controls below toolbar -->
+      <div class="power-controls-bar">
+        <button mat-raised-button [color]="state.status().power ? 'accent' : 'primary'" (click)="togglePower()"
+                matTooltip="{{ state.status().power ? 'Power On' : 'Power Off' }}">
+          <mat-icon>power_settings_new</mat-icon>
+          {{ state.status().power ? 'Power On' : 'Power Off' }}
+        </button>
+        <button mat-raised-button color="warn" (click)="emergencyStop()" matTooltip="Emergency Stop">
+          <mat-icon>warning</mat-icon>
+          Emergency Stop
+        </button>
+      </div>
+
       <main class="main-content">
         <router-outlet />
       </main>
@@ -115,23 +123,81 @@ import { DccService } from './services/dcc.service';
       background-color: #f44336;
     }
 
-    .power-controls {
-      margin-right: 16px;
+    .power-controls-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 16px;
+      background-color: rgba(0, 0, 0, 0.03);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.12);
     }
 
-    .emergency-stop {
-      background-color: #f44336 !important;
-      margin-left: 4px;
+    .dark-theme .power-controls-bar {
+      background-color: rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .power-controls-bar button {
+      min-width: 140px;
     }
 
     nav a.active {
       background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    @media (max-width: 959px) {
+      .desktop-nav {
+        display: none !important;
+      }
+    }
+
+    @media (min-width: 960px) {
+      .mobile-menu {
+        display: none !important;
+      }
     }
   `]
 })
 export class AppComponent {
   state = inject(StateService);
   private dcc = inject(DccService);
+  private platformId = inject(PLATFORM_ID);
+  private renderer = inject(Renderer2);
+  private document = inject(DOCUMENT);
+
+  isDarkTheme = signal(false);
+
+  constructor() {
+    // Load theme preference from localStorage
+    if (isPlatformBrowser(this.platformId)) {
+      const savedTheme = localStorage.getItem('theme');
+      this.isDarkTheme.set(savedTheme === 'dark');
+      this.applyThemeToBody(savedTheme === 'dark');
+    }
+
+    // Watch for theme changes and apply to body
+    effect(() => {
+      if (isPlatformBrowser(this.platformId)) {
+        this.applyThemeToBody(this.isDarkTheme());
+      }
+    });
+  }
+
+  private applyThemeToBody(isDark: boolean): void {
+    if (isDark) {
+      this.renderer.addClass(this.document.body, 'dark-theme');
+    } else {
+      this.renderer.removeClass(this.document.body, 'dark-theme');
+    }
+  }
+
+  toggleTheme(): void {
+    this.isDarkTheme.update(v => !v);
+    if (isPlatformBrowser(this.platformId)) {
+      localStorage.setItem('theme', this.isDarkTheme() ? 'dark' : 'light');
+    }
+  }
 
   togglePower(): void {
     this.dcc.setPower(!this.state.status().power);

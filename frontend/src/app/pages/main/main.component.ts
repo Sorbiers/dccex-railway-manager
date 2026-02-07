@@ -190,6 +190,10 @@ import { Device, DccFunction } from '../../models';
       color: #1976d2;
     }
 
+    :host-context(.dark-theme) .speed-display {
+      color: #64b5f6;
+    }
+
     .speed-slider {
       width: 100%;
     }
@@ -214,6 +218,10 @@ import { Device, DccFunction } from '../../models';
         font-size: 14px;
         color: rgba(0, 0, 0, 0.6);
       }
+    }
+
+    :host-context(.dark-theme) .function-section h3 {
+      color: rgba(255, 255, 255, 0.6);
     }
 
     .function-grid {
@@ -243,6 +251,11 @@ import { Device, DccFunction } from '../../models';
       &.active {
         background-color: #bbdefb;
       }
+    }
+
+    :host-context(.dark-theme) .function-btn.active {
+      background-color: #1565c0;
+      color: rgba(255, 255, 255, 0.87);
     }
 
     mat-accordion {

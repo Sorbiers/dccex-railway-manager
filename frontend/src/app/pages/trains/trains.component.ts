@@ -132,6 +132,10 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../components/conf
       }
     }
 
+    :host-context(.dark-theme) .device-card mat-card-header mat-icon[mat-card-avatar] {
+      color: #64b5f6;
+    }
+
     .functions-preview {
       margin-top: 8px;
 
@@ -168,6 +172,21 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../components/conf
         font-size: 12px;
         color: rgba(0, 0, 0, 0.6);
         padding: 4px 8px;
+      }
+    }
+
+    :host-context(.dark-theme) .functions-preview {
+      .label {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      .function-chip {
+        background-color: #1565c0;
+        color: rgba(255, 255, 255, 0.87);
+      }
+
+      .more {
+        color: rgba(255, 255, 255, 0.6);
       }
     }
 

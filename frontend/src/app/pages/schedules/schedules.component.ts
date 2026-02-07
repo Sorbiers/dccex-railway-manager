@@ -137,6 +137,10 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../components/conf
       }
     }
 
+    :host-context(.dark-theme) .schedule-card mat-card-header mat-icon[mat-card-avatar] {
+      color: #64b5f6;
+    }
+
     .days-row {
       display: flex;
       gap: 4px;
@@ -156,6 +160,16 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../components/conf
       }
     }
 
+    :host-context(.dark-theme) .day-chip {
+      background-color: #424242;
+      color: rgba(255, 255, 255, 0.6);
+
+      &.active {
+        background-color: #1976d2;
+        color: white;
+      }
+    }
+
     .items-preview {
       padding: 0;
 
@@ -168,6 +182,10 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../components/conf
         color: rgba(0, 0, 0, 0.6);
         font-style: italic;
       }
+    }
+
+    :host-context(.dark-theme) .items-preview .more-items {
+      color: rgba(255, 255, 255, 0.6);
     }
 
     mat-card-actions {

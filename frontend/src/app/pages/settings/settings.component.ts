@@ -156,6 +156,10 @@ import { Settings } from '../../models';
       }
     }
 
+    :host-context(.dark-theme) mat-card mat-card-header mat-icon[mat-card-avatar] {
+      color: #64b5f6;
+    }
+
     .form-row {
       display: flex;
       gap: 16px;

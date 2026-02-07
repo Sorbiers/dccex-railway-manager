@@ -1,5 +1,67 @@
 @use '@angular/material' as mat;
 
+@include mat.core();
+
+// Define light theme
+$light-primary: mat.m2-define-palette(mat.$m2-indigo-palette);
+$light-accent: mat.m2-define-palette(mat.$m2-pink-palette, A200, A100, A400);
+$light-warn: mat.m2-define-palette(mat.$m2-red-palette);
+
+$light-theme: mat.m2-define-light-theme((
+  color: (
+    primary: $light-primary,
+    accent: $light-accent,
+    warn: $light-warn,
+  )
+));
+
+// Define dark theme
+$dark-primary: mat.m2-define-palette(mat.$m2-blue-palette);
+$dark-accent: mat.m2-define-palette(mat.$m2-amber-palette, A200, A100, A400);
+$dark-warn: mat.m2-define-palette(mat.$m2-red-palette);
+
+$dark-theme: mat.m2-define-dark-theme((
+  color: (
+    primary: $dark-primary,
+    accent: $dark-accent,
+    warn: $dark-warn,
+  )
+));
+
+// Apply light theme by default
+@include mat.all-component-themes($light-theme);
+
+// Dark theme class
+.dark-theme {
+  background-color: #303030;
+  color: rgba(255, 255, 255, 0.87);
+
+  @include mat.all-component-colors($dark-theme);
+
+  .main-content {
+    color: rgba(255, 255, 255, 0.87);
+  }
+
+  // Override status indicators for better visibility
+  .status-indicator.connected {
+    background-color: #66bb6a;
+    box-shadow: 0 0 8px #66bb6a;
+  }
+
+  .status-indicator.disconnected {
+    background-color: #ef5350;
+  }
+
+  // Emergency stop button remains red in dark theme
+  .emergency-stop {
+    background-color: #ef5350 !important;
+
+    &:hover {
+      background-color: #e53935 !important;
+    }
+  }
+}
+
 html, body {
   height: 100%;
   margin: 0;
@@ -8,12 +70,19 @@ html, body {
 
 body {
   background-color: #fafafa;
+  transition: background-color 0.3s ease;
+
+  &.dark-theme {
+    background-color: #303030;
+    color: rgba(255, 255, 255, 0.87);
+  }
 }
 
 .app-container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  transition: background-color 0.3s ease;
 }
 
 .main-content {
@@ -138,6 +207,10 @@ body {
   }
 }
 
+.dark-theme .function-group .group-header:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
 // Train tabs
 .train-tabs {
   .mat-mdc-tab-body-wrapper {
@@ -211,6 +284,14 @@ body {
   }
 }
 
+.dark-theme .schedule-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+
+  .action {
+    color: rgba(255, 255, 255, 0.6);
+  }
+}
+
 // Settings form
 .settings-section {
   margin-bottom: 24px;
@@ -219,6 +300,10 @@ body {
     margin-bottom: 16px;
     color: rgba(0, 0, 0, 0.87);
   }
+}
+
+.dark-theme .settings-section h3 {
+  color: rgba(255, 255, 255, 0.87);
 }
 
 // Emergency stop button
