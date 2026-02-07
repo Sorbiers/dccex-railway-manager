@@ -1,0 +1,10 @@
+{
+  "name": "dccex-types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types for DCC-EX Train Control System",
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {},
+  "keywords": ["dcc-ex", "types", "typescript"],
+  "license": "MIT"
+}

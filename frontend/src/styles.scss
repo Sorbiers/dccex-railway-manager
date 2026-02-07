@@ -1,0 +1,232 @@
+@use '@angular/material' as mat;
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+}
+
+body {
+  background-color: #fafafa;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  padding: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+// Status indicators
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+
+  &.connected {
+    background-color: #4caf50;
+    box-shadow: 0 0 8px #4caf50;
+  }
+
+  &.disconnected {
+    background-color: #f44336;
+  }
+
+  &.warning {
+    background-color: #ff9800;
+  }
+}
+
+// Card styling
+.device-card {
+  margin-bottom: 16px;
+
+  .mat-mdc-card-header {
+    padding-bottom: 8px;
+  }
+
+  .mat-mdc-card-content {
+    padding-top: 0;
+  }
+}
+
+// Throttle slider
+.throttle-container {
+  padding: 16px;
+
+  .speed-display {
+    font-size: 48px;
+    font-weight: 300;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
+  .speed-slider {
+    width: 100%;
+  }
+
+  .direction-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 16px;
+  }
+}
+
+// Function buttons
+.function-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+  padding: 8px 0;
+
+  .function-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 64px;
+
+    .mat-icon {
+      margin-bottom: 4px;
+    }
+
+    span {
+      font-size: 11px;
+      text-align: center;
+    }
+
+    &.active {
+      background-color: mat.m2-get-color-from-palette(mat.$m2-blue-palette, 100);
+    }
+  }
+}
+
+// Function groups
+.function-group {
+  margin-top: 16px;
+
+  .group-header {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.04);
+    }
+
+    .mat-icon {
+      margin-right: 8px;
+    }
+
+    span {
+      flex: 1;
+      font-weight: 500;
+    }
+  }
+}
+
+// Train tabs
+.train-tabs {
+  .mat-mdc-tab-body-wrapper {
+    padding: 16px 0;
+  }
+}
+
+// Dialog styling
+.dialog-content {
+  min-width: 300px;
+
+  @media (min-width: 600px) {
+    min-width: 400px;
+  }
+}
+
+// Form fields
+.form-field-full {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+// Power controls in header
+.power-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+// Mobile menu
+.mobile-menu {
+  display: none;
+
+  @media (max-width: 599px) {
+    display: block;
+  }
+}
+
+.desktop-nav {
+  display: flex;
+  gap: 8px;
+
+  @media (max-width: 599px) {
+    display: none;
+  }
+}
+
+// Schedule items
+.schedule-item {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .time {
+    font-weight: 500;
+    min-width: 60px;
+  }
+
+  .device {
+    flex: 1;
+    margin-left: 16px;
+  }
+
+  .action {
+    color: rgba(0, 0, 0, 0.6);
+  }
+}
+
+// Settings form
+.settings-section {
+  margin-bottom: 24px;
+
+  h3 {
+    margin-bottom: 16px;
+    color: rgba(0, 0, 0, 0.87);
+  }
+}
+
+// Emergency stop button
+.emergency-stop {
+  background-color: #f44336 !important;
+  color: white !important;
+
+  &:hover {
+    background-color: #d32f2f !important;
+  }
+}
