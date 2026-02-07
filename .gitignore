@@ -34,7 +34,7 @@ desktop.ini
 nul
 
 # Data files (generated at runtime)
-backend/dist/data/
+backend/dist
 backend/src/data/*.json
 
 # Logs
