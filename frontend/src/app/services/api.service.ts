@@ -85,6 +85,11 @@ export class ApiService {
       .pipe(map(res => res.success));
   }
 
+  sendFreeCommand(trainAddress: number, command: string): Observable<string> {
+    return this.http.post<ApiResponse<string>>(`${this.baseUrl}/dcc/free-command`, { trainAddress, command })
+      .pipe(map(res => res.data || ''));
+  }
+
   connectDcc(): Observable<boolean> {
     return this.http.post<ApiResponse<void>>(`${this.baseUrl}/dcc/connect`, {})
       .pipe(map(res => res.success));

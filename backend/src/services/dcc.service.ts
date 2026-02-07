@@ -144,6 +144,33 @@ export class DccService extends EventEmitter {
     return true;
   }
 
+  sendCommandWithResponse(command: string, timeout: number = 2000): Promise<string> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket || !this.status.connected) {
+        reject(new Error('Not connected to DCC-EX'));
+        return;
+      }
+
+      const responseHandler = (message: string) => {
+        clearTimeout(timer);
+        this.removeListener('message', responseHandler);
+        resolve(message);
+      };
+
+      const timer = setTimeout(() => {
+        this.removeListener('message', responseHandler);
+        reject(new Error('Command timeout - no response received'));
+      }, timeout);
+
+      this.once('message', responseHandler);
+
+      // Ensure command is wrapped in angle brackets
+      const formattedCommand = command.startsWith('<') ? command : `<${command}>`;
+      console.log('Sending DCC command with response:', formattedCommand);
+      this.socket.write(formattedCommand);
+    });
+  }
+
   // Throttle control: <t REGISTER CAB SPEED DIRECTION>
   setThrottle(address: number, speed: number, direction: 'forward' | 'reverse'): boolean {
     const dir = direction === 'forward' ? 1 : 0;

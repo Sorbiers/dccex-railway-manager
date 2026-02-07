@@ -108,4 +108,46 @@ router.post('/disconnect', (_req: Request, res: Response) => {
   }
 });
 
+// POST /api/dcc/free-command - Send free-form DCC command
+router.post('/free-command', async (req: Request, res: Response) => {
+  try {
+    const { trainAddress, command } = req.body;
+
+    if (!command || typeof command !== 'string') {
+      return res.status(400).json({ success: false, error: 'Command is required' });
+    }
+
+    // Send the command and wait for response
+    try {
+      const response = await dccService.sendCommandWithResponse(command);
+      res.json({
+        success: true,
+        data: response
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message.includes('Not connected')) {
+          return res.status(503).json({
+            success: false,
+            error: 'Not connected to DCC-EX',
+            data: null
+          });
+        }
+        return res.status(500).json({
+          success: false,
+          error: error.message,
+          data: null
+        });
+      }
+      throw error;
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send free command',
+      data: null
+    });
+  }
+});
+
 export default router;

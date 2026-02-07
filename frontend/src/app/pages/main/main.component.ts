@@ -7,9 +7,13 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { FormsModule } from '@angular/forms';
 import { StateService } from '../../services/state.service';
 import { DccService } from '../../services/dcc.service';
+import { ApiService } from '../../services/api.service';
 import { Device, DccFunction } from '../../models';
 
 @Component({
@@ -24,7 +28,10 @@ import { Device, DccFunction } from '../../models';
     MatButtonModule,
     MatButtonToggleModule,
     MatIconModule,
-    MatExpansionModule
+    MatExpansionModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSnackBarModule
   ],
   template: `
     <div class="throttle-page">
@@ -66,6 +73,25 @@ import { Device, DccFunction } from '../../models';
                   <button mat-raised-button color="warn" (click)="stopTrain(train)">
                     <mat-icon>stop</mat-icon> Stop
                   </button>
+                </div>
+
+                <!-- Send Free Command -->
+                <div class="command-section">
+                  <h3>Send Command</h3>
+                  <div class="command-input">
+                    <mat-form-field appearance="outline" class="command-field">
+                      <mat-label>DCC-EX Command</mat-label>
+                      <input matInput [(ngModel)]="freeCommand" placeholder="e.g., <t 1 3 50 1>" (keyup.enter)="sendFreeCommand(train)">
+                    </mat-form-field>
+                    <button mat-raised-button color="primary" (click)="sendFreeCommand(train)">
+                      <mat-icon>send</mat-icon> Send
+                    </button>
+                  </div>
+                  @if (commandResponse()) {
+                    <div class="command-response">
+                      <strong>Response:</strong> {{ commandResponse() }}
+                    </div>
+                  }
                 </div>
 
                 <!-- Main Functions (always visible) -->
@@ -210,6 +236,60 @@ import { Device, DccFunction } from '../../models';
       margin-top: 16px;
     }
 
+    .command-section {
+      margin-top: 24px;
+      padding: 16px;
+      background-color: rgba(0, 0, 0, 0.02);
+      border-radius: 4px;
+
+      h3 {
+        margin: 0 0 12px 0;
+        font-size: 14px;
+        color: rgba(0, 0, 0, 0.6);
+      }
+    }
+
+    :host-context(.dark-theme) .command-section {
+      background-color: rgba(255, 255, 255, 0.05);
+
+      h3 {
+        color: rgba(255, 255, 255, 0.6);
+      }
+    }
+
+    .command-input {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+
+      .command-field {
+        flex: 1;
+      }
+    }
+
+    .command-response {
+      margin-top: 12px;
+      padding: 8px 12px;
+      background-color: rgba(25, 118, 210, 0.1);
+      border-left: 3px solid #1976d2;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+
+      strong {
+        color: #1976d2;
+      }
+    }
+
+    :host-context(.dark-theme) .command-response {
+      background-color: rgba(100, 181, 246, 0.1);
+      border-left-color: #64b5f6;
+
+      strong {
+        color: #64b5f6;
+      }
+    }
+
     .function-section {
       margin-top: 24px;
 
@@ -270,8 +350,12 @@ import { Device, DccFunction } from '../../models';
 export class MainComponent {
   state = inject(StateService);
   private dcc = inject(DccService);
+  private api = inject(ApiService);
+  private snackBar = inject(MatSnackBar);
 
   selectedTabIndex = signal(0);
+  freeCommand = '';
+  commandResponse = signal<string>('');
 
   onTabChange(index: number): void {
     this.selectedTabIndex.set(index);
@@ -331,5 +415,25 @@ export class MainComponent {
   hasGroupedFunctions(train: Device): boolean {
     const fns = train.functions || [];
     return fns.length > 3;
+  }
+
+  sendFreeCommand(train: Device): void {
+    if (!this.freeCommand.trim()) {
+      this.snackBar.open('Please enter a command', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.api.sendFreeCommand(train.address, this.freeCommand).subscribe({
+      next: (response) => {
+        this.commandResponse.set(response || 'Command sent successfully');
+        this.snackBar.open('Command sent', 'Close', { duration: 2000 });
+        this.freeCommand = '';
+      },
+      error: (err) => {
+        console.error('Failed to send command', err);
+        this.commandResponse.set('Error: ' + (err.error?.message || 'Failed to send command'));
+        this.snackBar.open('Failed to send command', 'Close', { duration: 3000 });
+      }
+    });
   }
 }
