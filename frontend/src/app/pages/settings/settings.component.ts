@@ -228,6 +228,7 @@ export class SettingsComponent implements OnInit {
   }
 
   saveSettings(): void {
+    this.state.setSettings(this.settings);
     this.api.updateSettings(this.settings).subscribe({
       next: () => {
         this.snackBar.open('Settings saved successfully', 'Close', { duration: 3000 });

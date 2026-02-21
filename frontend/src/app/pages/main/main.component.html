@@ -1,0 +1,217 @@
+<div class="throttle-page">
+    @if (state.enabledTrains().length === 0) {
+    <mat-card>
+        <mat-card-content>
+            <p>No trains enabled. Go to the Trains page to add or enable trains.</p>
+        </mat-card-content>
+    </mat-card>
+    } @else {
+    <mat-tab-group class="train-tabs" [selectedIndex]="selectedTabIndex()" (selectedIndexChange)="onTabChange($event)">
+        @for (train of state.enabledTrains(); track train.id) {
+        <mat-tab [label]="train.name">
+            <div class="throttle-container">
+                <!-- Speed Display -->
+                <div class="speed-display">
+                    {{ train.speed || 0 }}
+                    @if (state.stateTrains()[train.address]) {
+                    <ngx-gauge type="semi" [value]="state.stateTrains()[train.address].speed" [size]="200" [min]="0"
+                        [max]="126" append="km/h" [label]="state.stateTrains()[train.address].direction"></ngx-gauge>
+                    }
+                </div>
+
+                <!-- Speed Slider -->
+                <mat-slider class="speed-slider" [min]="0" [max]="126" [step]="1" [discrete]="true" showTickMarks>
+                    <input matSliderThumb [value]="train.speed || 0" (input)="onSpeedChange(train, $event)">
+                </mat-slider>
+
+                <!-- Direction Toggle -->
+                <div class="direction-toggle">
+                    <!-- <mat-button-toggle-group [value]="train.direction || 'forward'"
+                        (change)="onDirectionChange(train, $event.value)"> -->
+                    <div class="direction-toggle-container">
+                        <button mat-raised-button color="primary" (click)="onDirectionChange(train, 'reverse')">
+                            <div class="direction-toggle-icon">
+                                <mat-icon>arrow_back</mat-icon> Reverse
+                            </div>
+                        </button>
+
+                        <svg width="120" height="150" viewBox="0 -25 100 160" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+                                    <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur" />
+                                    <feOffset in="blur" dx="0" dy="2" result="offsetBlur" />
+                                    <feMerge>
+                                        <feMergeNode in="offsetBlur" />
+                                        <feMergeNode in="SourceGraphic" />
+                                    </feMerge>
+                                </filter>
+
+                                <linearGradient id="forwardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#a06d43;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#7e3d11;stop-opacity:1" />
+                                </linearGradient>
+                            </defs>
+
+                            <g>
+                                <!-- dial -->
+                                <circle cx="50" cy="50" r="50" filter="url(#shadow)" fill="#ECEFF1" stroke="#CFD8DC"
+                                    stroke-width="2" />
+                                <circle cx="50" cy="50" r="35" fill="none" stroke="#B0BEC5" stroke-width="1"
+                                    stroke-dasharray="4 4" />
+                                <g transform="rotate(-60 50 50)">
+                                    <!-- orange: -120° → -60° -->
+                                    <path d="M35 24 A30 30 0 0 1 65 24" fill="none" stroke="#FF7043c0" stroke-width="10"
+                                        stroke-linecap="butt" />
+
+                                    <!-- red: -60° → 0° -->
+                                    <path d="M65 24 A30 30 0 0 1 80 50" fill="none" stroke="#E53935c0" stroke-width="10"
+                                        stroke-linecap="butt" />
+
+                                    <!-- green: 0° → 60° -->
+                                    <path d="M80 50 A30 30 0 0 1 65 76" fill="none" stroke="#43A047c0" stroke-width="10"
+                                        stroke-linecap="butt" />
+                                </g>
+                                <!-- handle -->
+
+                                <!-- handle: anchored at center (50,50), extends beyond the big circle -->
+                                <g [attr.transform]="'rotate(' + getHandleRotation(train) + ' 50 50)'">
+                                    <!-- bottom of the rect is exactly at y=50 (center), so it's "attached" -->
+                                    <rect x="44" y="-17" width="12" height="65" rx="6" fill="none" stroke="gray"
+                                        stroke-width="5" />
+                                    <!-- knob at the very top, slightly outside the original canvas -->
+                                    <circle cx="50" cy="-11" r="7" fill="lightgray" stroke="darkgray" />
+                                    <!-- small hub at center to show attachment -->
+                                    <circle cx="50" cy="50" r="10" fill="gray" stroke="gray" />
+                                </g>
+                            </g>
+
+                            <text x="50" y="125" text-anchor="middle" font-family="Roboto, Arial, sans-serif"
+                                font-size="12" font-weight="500"
+                                fill="var(--mdc-checkbox-selected-icon-color, #1B5E20)">{{ getDirectionLabel(train)
+                                }}</text>
+                        </svg>
+
+
+
+                        <button mat-raised-button color="primary" (click)="onDirectionChange(train, 'forward')">
+                            <div class="direction-toggle-icon">
+                                Forward <mat-icon>arrow_forward</mat-icon>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Stop -->
+                <div class="quick-stop">
+                    <button mat-raised-button color="warn" (click)="stopTrain(train)">
+                        <mat-icon>stop</mat-icon> Stop
+                    </button>
+                </div>
+
+                <!-- Main Functions (always visible) -->
+                @if (getMainFunctions(train).length > 0) {
+                <div class="function-section">
+                    <div class="function-grid">
+                        @for (fn of getMainFunctions(train); track fn.id) {
+                        <button mat-fab [color]="isFunctionActive(train, fn.id) ? 'accent' : 'primary'"
+                            class="function--btn" [class.active_]="isFunctionActive(train, fn.id)"
+                            (mousedown)="onFunctionPress(train, fn)" (mouseup)="onFunctionRelease(train, fn)"
+                            (mouseleave)="onFunctionRelease(train, fn)" (touchstart)="onFunctionPress(train, fn)"
+                            (touchend)="onFunctionRelease(train, fn)">
+                            <mat-icon>{{ fn.icon || 'radio_button_unchecked' }}</mat-icon>
+                            <!-- <span>{{ fn.name }}</span> -->
+                        </button>
+                        }
+                    </div>
+                </div>
+                }
+
+                <!-- Function Groups -->
+                @if (hasGroupedFunctions(train)) {
+                <div class="function-accordion-section">
+                    <mat-accordion>
+                        @if (getLightsFunctions(train).length > 0) {
+                        <mat-expansion-panel>
+                            <mat-expansion-panel-header>
+                                <mat-panel-title>
+                                    <mat-icon>lightbulb</mat-icon> Lights
+                                </mat-panel-title>
+                            </mat-expansion-panel-header>
+                            <div class="function-grid">
+                                @for (fn of getLightsFunctions(train); track fn.id) {
+                                <div class="function-grid-item">
+                                    <button mat-fab [color]="isFunctionActive(train, fn.id) ? 'accent' : 'primary'"
+                                        (mousedown)="onFunctionPress(train, fn)"
+                                        (mouseup)="onFunctionRelease(train, fn)"
+                                        (mouseleave)="onFunctionRelease(train, fn)"
+                                        (touchstart)="onFunctionPress(train, fn)"
+                                        (touchend)="onFunctionRelease(train, fn)">
+                                        <mat-icon>{{ fn.icon || 'light' }}</mat-icon>
+                                        <span>{{ fn.name }}</span>
+                                    </button>
+                                </div>
+                                }
+                            </div>
+                        </mat-expansion-panel>
+                        }
+
+                        @if (getSoundsFunctions(train).length > 0) {
+                        <mat-expansion-panel>
+                            <mat-expansion-panel-header>
+                                <mat-panel-title>
+                                    <mat-icon>volume_up</mat-icon> Sounds
+                                </mat-panel-title>
+                            </mat-expansion-panel-header>
+                            <div class="function-grid">
+                                @for (fn of getSoundsFunctions(train); track fn.id) {
+                                <div class="function-grid-item">
+                                    <button mat-fab [color]="isFunctionActive(train, fn.id) ? 'accent' : 'primary'"
+                                        [class.active]="isFunctionActive(train, fn.id)"
+                                        (mousedown)="onFunctionPress(train, fn)"
+                                        (mouseup)="onFunctionRelease(train, fn)"
+                                        (mouseleave)="onFunctionRelease(train, fn)"
+                                        (touchstart)="onFunctionPress(train, fn)"
+                                        (touchend)="onFunctionRelease(train, fn)">
+                                        <mat-icon>{{ fn.icon || 'music_note' }}</mat-icon>
+                                        <span>{{ fn.name }}</span>
+                                    </button>
+                                </div>
+                                }
+                            </div>
+                        </mat-expansion-panel>
+                        }
+
+                        @if (getOtherFunctions(train).length > 0) {
+                        <mat-expansion-panel>
+                            <mat-expansion-panel-header>
+                                <mat-panel-title>
+                                    <mat-icon>more_horiz</mat-icon> Other
+                                </mat-panel-title>
+                            </mat-expansion-panel-header>
+                            <div class="function-grid">
+                                @for (fn of getOtherFunctions(train); track fn.id) {
+                                <div class="function-grid-item">
+                                    <button mat-fab [color]="isFunctionActive(train, fn.id) ? 'accent' : 'primary'"
+                                        [class.active]="isFunctionActive(train, fn.id)"
+                                        (mousedown)="onFunctionPress(train, fn)"
+                                        (mouseup)="onFunctionRelease(train, fn)"
+                                        (mouseleave)="onFunctionRelease(train, fn)"
+                                        (touchstart)="onFunctionPress(train, fn)"
+                                        (touchend)="onFunctionRelease(train, fn)">
+                                        <mat-icon>{{ fn.icon || 'settings' }}</mat-icon>
+                                        <span>{{ fn.name }}</span>
+                                    </button>
+                                </div>
+                                }
+                            </div>
+                        </mat-expansion-panel>
+                        }
+                    </mat-accordion>
+                </div>
+                }
+            </div>
+        </mat-tab>
+        }
+    </mat-tab-group>
+    }
+</div>

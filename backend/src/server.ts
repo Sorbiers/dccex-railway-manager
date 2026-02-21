@@ -57,6 +57,14 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 
 const clients = new Set<WebSocket>();
 
+function getStatus(): void {
+    if (dccService.isConnected()) {
+        dccService.sendCommand('<s><=><c><#><iDCC-EX>');
+    }
+}
+
+setInterval(() => getStatus(), 4000);
+
 wss.on('connection', (ws) => {
   console.log('WebSocket client connected');
   clients.add(ws);

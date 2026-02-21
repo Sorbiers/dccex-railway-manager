@@ -1,0 +1,64 @@
+<div class="trains-page">
+  <div class="page-header">
+    <h1>Trains & Devices</h1>
+    <button mat-raised-button color="primary" (click)="openAddDialog()">
+      <mat-icon>add</mat-icon> Add Device
+    </button>
+  </div>
+
+  <div class="devices-grid">
+    @for (device of state.devices(); track device.id) {
+      <mat-card class="device-card">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>{{ device.type === 'train' ? 'train' : 'call_split' }}</mat-icon>
+          <mat-card-title>{{ device.name }}</mat-card-title>
+          <mat-card-subtitle>
+            Address: {{ device.address }} | {{ device.type | titlecase }}
+          </mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+          @if (device.type === 'train' && device.functions && device.functions.length > 0) {
+            <div class="functions-preview">
+              <span class="label">Functions:</span>
+              <div class="function-chips">
+                @for (fn of device.functions.slice(0, 4); track fn.id) {
+                  <span class="function-chip">
+                    <mat-icon>{{ fn.icon || 'radio_button_unchecked' }}</mat-icon>
+                    {{ fn.name }}
+                  </span>
+                }
+                @if (device.functions.length > 4) {
+                  <span class="more">+{{ device.functions.length - 4 }} more</span>
+                }
+              </div>
+            </div>
+          }
+        </mat-card-content>
+
+        <mat-card-actions align="end">
+          <mat-slide-toggle
+            [checked]="device.enabled"
+            (change)="toggleEnabled(device)"
+            color="primary">
+            {{ device.enabled ? 'Enabled' : 'Disabled' }}
+          </mat-slide-toggle>
+          <button mat-icon-button (click)="openEditDialog(device)" matTooltip="Edit">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button color="warn" (click)="confirmDelete(device)" matTooltip="Delete">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </mat-card-actions>
+      </mat-card>
+    }
+  </div>
+
+  @if (state.devices().length === 0) {
+    <mat-card>
+      <mat-card-content>
+        <p>No devices configured. Click "Add Device" to create your first train or switch.</p>
+      </mat-card-content>
+    </mat-card>
+  }
+</div>

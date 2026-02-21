@@ -1,0 +1,77 @@
+<div class="app-container" [class.dark-theme]="isDarkTheme()">
+    <mat-toolbar color="primary">
+        <span>DCC-EX Control</span>
+
+        <span class="spacer"></span>
+
+        <!-- Status indicators -->
+        <div class="status-section">
+            <span class="status-indicator" [class.connected]="state.status().backend"
+                [class.disconnected]="!state.status().backend"
+                matTooltip="Backend {{ state.status().backend ? 'Connected' : 'Disconnected' }}"></span>
+            <span class="status-indicator" [class.connected]="state.status().dccex"
+                [class.disconnected]="!state.status().dccex"
+                matTooltip="DCC-EX {{ state.status().dccex ? 'Connected' : 'Disconnected' }}"></span>
+        </div>
+
+        <!-- Theme toggle -->
+        <button mat-icon-button (click)="toggleTheme()" matTooltip="Toggle Theme">
+            <mat-icon>{{ isDarkTheme() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+        </button>
+
+        <!-- Desktop navigation -->
+        <nav class="desktop-nav">
+            <a mat-button routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+                <mat-icon>speed</mat-icon> Throttle
+            </a>
+            <a mat-button routerLink="/trains" routerLinkActive="active">
+                <mat-icon>train</mat-icon> Trains
+            </a>
+            <a mat-button routerLink="/schedules" routerLinkActive="active">
+                <mat-icon>schedule</mat-icon> Schedules
+            </a>
+            <a mat-button routerLink="/settings" routerLinkActive="active">
+                <mat-icon>settings</mat-icon> Settings
+            </a>
+        </nav>
+
+        <!-- Mobile menu -->
+        <button mat-icon-button class="mobile-menu" [matMenuTriggerFor]="menu">
+            <mat-icon>menu</mat-icon>
+        </button>
+        <mat-menu #menu="matMenu">
+            <a mat-menu-item routerLink="/">
+                <mat-icon>speed</mat-icon> Throttle
+            </a>
+            <a mat-menu-item routerLink="/trains">
+                <mat-icon>train</mat-icon> Trains
+            </a>
+            <a mat-menu-item routerLink="/schedules">
+                <mat-icon>schedule</mat-icon> Schedules
+            </a>
+            <a mat-menu-item routerLink="/settings">
+                <mat-icon>settings</mat-icon> Settings
+            </a>
+        </mat-menu>
+    </mat-toolbar>
+
+    <!-- Power controls below toolbar -->
+    <div class="power-controls-bar">
+        <ngx-gauge type="semi" [value]="state.stateController().currentMilliAmps" [size]="100" [min]="0" [max]="state.stateController().currentMaxMilliAmps"
+            append="mA" [label]="state.stateController().model"></ngx-gauge>
+        
+        <button mat-raised-button [color]="state.status().power ? 'warn' : 'primary'" (click)="togglePower()"
+            matTooltip="{{ state.status().power ? 'Power On' : 'Power Off' }}">
+            <mat-icon>power_settings_new</mat-icon>
+            {{ state.status().power ? 'Power Off' : 'Power On' }}
+        </button>
+        <button mat-raised-button color="warn" (click)="emergencyStop()" matTooltip="Emergency Stop">
+            <mat-icon>warning</mat-icon>
+            Emergency Stop
+        </button>
+    </div>
+
+    <main class="main-content">
+        <router-outlet />
+    </main>
+</div>
