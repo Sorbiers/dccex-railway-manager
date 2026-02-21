@@ -10,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { Device, DccFunction } from '../../models';
 
 interface FunctionPreset {
@@ -45,7 +46,8 @@ export interface DeviceDialogData {
     MatIconModule,
     MatCheckboxModule,
     MatAutocompleteModule,
-    MatMenuModule
+    MatMenuModule,
+    MatExpansionModule
   ],
   template: `
     <h2 mat-dialog-title>{{ data.mode === 'add' ? 'Add Device' : 'Edit Device' }}</h2>
@@ -153,10 +155,83 @@ export interface DeviceDialogData {
 
     <mat-dialog-actions align="end">
       <button mat-button (click)="cancel()">Cancel</button>
+      @if (type === 'train' && functions.length > 0) {
+        <button mat-button color="accent" (click)="previewFunctions()">
+          <mat-icon>preview</mat-icon> Preview Functions
+        </button>
+      }
       <button mat-raised-button color="primary" (click)="save()" [disabled]="!isValid()">
         {{ data.mode === 'add' ? 'Add' : 'Save' }}
       </button>
     </mat-dialog-actions>
+
+    @if (showPreview) {
+      <div class="preview-overlay" (click)="closePreview()">
+        <div class="preview-dialog" (click)="$event.stopPropagation()">
+          <div class="preview-header">
+            <h3>Function Preview</h3>
+            <button mat-icon-button (click)="closePreview()">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <div class="preview-content">
+            <div class="preview-image">
+              @if (imageUrl) {
+                <img [src]="imageUrl" [alt]="name">
+              } @else {
+                <div class="no-image-placeholder">
+                  <mat-icon>train</mat-icon>
+                  <p>{{ name || 'Train Preview' }}</p>
+                </div>
+              }
+            </div>
+
+            <div class="preview-functions">
+              <!-- Quick Access Functions -->
+              @if (getPreviewFunctions('quick').length > 0) {
+                <div class="preview-section">
+                  <h4>Quick Functions</h4>
+                  <div class="preview-function-grid">
+                    @for (fn of getPreviewFunctions('quick'); track fn.id) {
+                      <button mat-raised-button class="preview-function-btn"
+                              [class.active]="previewActiveFunctions.has(fn.id)"
+                              (click)="togglePreviewFunction(fn)">
+                        <mat-icon>{{ fn.icon || 'radio_button_unchecked' }}</mat-icon>
+                        <span>{{ fn.name }}</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+
+              <!-- Grouped Functions -->
+              @for (group of ['lights', 'sounds', 'other']; track group) {
+                @if (getPreviewFunctions(group).length > 0) {
+                  <mat-expansion-panel>
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>
+                        <mat-icon>{{ getGroupIcon(group) }}</mat-icon>
+                        {{ group | titlecase }}
+                      </mat-panel-title>
+                    </mat-expansion-panel-header>
+                    <div class="preview-function-grid">
+                      @for (fn of getPreviewFunctions(group); track fn.id) {
+                        <button mat-raised-button class="preview-function-btn"
+                                [class.active]="previewActiveFunctions.has(fn.id)"
+                                (click)="togglePreviewFunction(fn)">
+                          <mat-icon>{{ fn.icon || 'radio_button_unchecked' }}</mat-icon>
+                          <span>{{ fn.name }}</span>
+                        </button>
+                      }
+                    </div>
+                  </mat-expansion-panel>
+                }
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: [`
     .dialog-content {
@@ -248,6 +323,151 @@ export interface DeviceDialogData {
         }
       }
     }
+
+    .preview-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .preview-dialog {
+      background-color: white;
+      border-radius: 8px;
+      max-width: 600px;
+      max-height: 80vh;
+      width: 90%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    :host-context(.dark-theme) .preview-dialog {
+      background-color: #424242;
+    }
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+
+      h3 {
+        margin: 0;
+      }
+    }
+
+    :host-context(.dark-theme) .preview-header {
+      border-bottom-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .preview-content {
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .preview-image {
+      text-align: center;
+      margin-bottom: 16px;
+
+      img {
+        max-width: 100%;
+        max-height: 200px;
+        border-radius: 8px;
+        object-fit: contain;
+      }
+
+      .no-image-placeholder {
+        padding: 40px;
+        background-color: rgba(0, 0, 0, 0.05);
+        border-radius: 8px;
+        text-align: center;
+
+        mat-icon {
+          font-size: 64px;
+          width: 64px;
+          height: 64px;
+          color: rgba(0, 0, 0, 0.3);
+        }
+
+        p {
+          margin: 8px 0 0 0;
+          color: rgba(0, 0, 0, 0.6);
+        }
+      }
+    }
+
+    :host-context(.dark-theme) .preview-image .no-image-placeholder {
+      background-color: rgba(255, 255, 255, 0.05);
+
+      mat-icon {
+        color: rgba(255, 255, 255, 0.3);
+      }
+
+      p {
+        color: rgba(255, 255, 255, 0.6);
+      }
+    }
+
+    .preview-section {
+      margin-bottom: 16px;
+
+      h4 {
+        margin: 0 0 12px 0;
+        font-size: 14px;
+        color: rgba(0, 0, 0, 0.6);
+      }
+    }
+
+    :host-context(.dark-theme) .preview-section h4 {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .preview-function-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 8px;
+      padding: 8px 0;
+    }
+
+    .preview-function-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 70px;
+      padding: 8px;
+
+      mat-icon {
+        margin-bottom: 4px;
+      }
+
+      span {
+        font-size: 11px;
+        text-align: center;
+        line-height: 1.2;
+      }
+
+      &.active {
+        background-color: #bbdefb;
+      }
+    }
+
+    :host-context(.dark-theme) .preview-function-btn.active {
+      background-color: #1565c0;
+      color: rgba(255, 255, 255, 0.87);
+    }
+
+    mat-expansion-panel {
+      margin-bottom: 8px;
+    }
   `]
 })
 export class DeviceDialogComponent {
@@ -259,6 +479,8 @@ export class DeviceDialogComponent {
   address = 3;
   functions: DccFunction[] = [];
   imageUrl = '';
+  showPreview = false;
+  previewActiveFunctions = new Set<number>();
 
   iconSuggestions = [
     'lightbulb',
@@ -382,6 +604,46 @@ export class DeviceDialogComponent {
 
   removeFunction(index: number): void {
     this.functions.splice(index, 1);
+  }
+
+  previewFunctions(): void {
+    this.showPreview = true;
+    this.previewActiveFunctions.clear();
+  }
+
+  closePreview(): void {
+    this.showPreview = false;
+    this.previewActiveFunctions.clear();
+  }
+
+  getPreviewFunctions(group: string): DccFunction[] {
+    return this.functions.filter(f => f.group === group);
+  }
+
+  togglePreviewFunction(fn: DccFunction): void {
+    if (fn.momentary) {
+      // For momentary functions, just flash the active state
+      this.previewActiveFunctions.add(fn.id);
+      setTimeout(() => {
+        this.previewActiveFunctions.delete(fn.id);
+      }, 200);
+    } else {
+      // For toggle functions, toggle the state
+      if (this.previewActiveFunctions.has(fn.id)) {
+        this.previewActiveFunctions.delete(fn.id);
+      } else {
+        this.previewActiveFunctions.add(fn.id);
+      }
+    }
+  }
+
+  getGroupIcon(group: string): string {
+    const icons: Record<string, string> = {
+      'lights': 'lightbulb',
+      'sounds': 'volume_up',
+      'other': 'more_horiz'
+    };
+    return icons[group] || 'settings';
   }
 
   isValid(): boolean {

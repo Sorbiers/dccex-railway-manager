@@ -10,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDividerModule } from '@angular/material/divider';
 import { WeeklySchedule, ScheduleItem, Device } from '../../models';
+import { DccService } from '../../services/dcc.service';
 
 export interface ScheduleDialogData {
   mode: 'add' | 'edit';
@@ -70,7 +71,7 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
           <div class="item-row">
             <mat-form-field class="item-time">
               <mat-label>Time</mat-label>
-              <input matInput type="time" [(ngModel)]="item.time">
+              <input matInput type="time" [(ngModel)]="item.time" step="1">
             </mat-form-field>
 
             <mat-form-field class="item-device">
@@ -111,8 +112,18 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
             @if (item.action === 'function') {
               <mat-form-field class="item-fn">
-                <mat-label>F#</mat-label>
-                <input matInput type="number" [(ngModel)]="item.params!.functionId" min="0" max="28">
+                <mat-label>Function</mat-label>
+                <mat-select [(ngModel)]="item.params!.functionId">
+                  @for (fn of getDeviceFunctions(item.deviceId); track fn.id) {
+                    <mat-option [value]="fn.id">
+                      <mat-icon>{{ fn.icon || 'radio_button_unchecked' }}</mat-icon>
+                      F{{ fn.id }}: {{ fn.name }}
+                    </mat-option>
+                  }
+                  @if (getDeviceFunctions(item.deviceId).length === 0) {
+                    <mat-option [value]="0">No functions defined</mat-option>
+                  }
+                </mat-select>
               </mat-form-field>
               <mat-checkbox [(ngModel)]="item.params!.functionState">On</mat-checkbox>
             }
@@ -131,14 +142,142 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
     <mat-dialog-actions align="end">
       <button mat-button (click)="cancel()">Cancel</button>
+      @if (items.length > 0) {
+        <button mat-button color="accent" (click)="previewSchedule()">
+          <mat-icon>preview</mat-icon> Preview Timeline
+        </button>
+        <button mat-button color="accent" (click)="simulateSchedule()">
+          <mat-icon>play_arrow</mat-icon> Simulate
+        </button>
+      }
       <button mat-raised-button color="primary" (click)="save()" [disabled]="!isValid()">
         {{ data.mode === 'add' ? 'Add' : 'Save' }}
       </button>
     </mat-dialog-actions>
+
+    @if (showPreview) {
+      <div class="preview-overlay" (click)="closePreview()">
+        <div class="preview-dialog" (click)="$event.stopPropagation()">
+          <div class="preview-header">
+            <h3>Schedule Timeline Preview</h3>
+            <button mat-icon-button (click)="closePreview()">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <div class="preview-content">
+            <div class="preview-schedule-info">
+              <h4>{{ name || 'Unnamed Schedule' }}</h4>
+              <div class="preview-days">
+                @for (day of getSelectedDays(); track day) {
+                  <span class="day-chip">{{ dayLabels[day] }}</span>
+                }
+              </div>
+            </div>
+
+            <div class="timeline">
+              @for (item of getSortedItems(); track item.id) {
+                <div class="timeline-item">
+                  <div class="timeline-time">{{ item.time }}</div>
+                  <div class="timeline-content">
+                    <div class="timeline-device">
+                      <mat-icon>{{ getDeviceType(item.deviceId) === 'train' ? 'train' : 'call_split' }}</mat-icon>
+                      {{ getDeviceName(item.deviceId) }}
+                    </div>
+                    <div class="timeline-action">
+                      {{ getActionDescription(item) }}
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (showSimulation) {
+      <div class="preview-overlay" (click)="closeSimulation()">
+        <div class="preview-dialog simulation-dialog" (click)="$event.stopPropagation()">
+          <div class="preview-header">
+            <h3>Schedule Simulation</h3>
+            <button mat-icon-button (click)="closeSimulation()">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <div class="preview-content">
+            <div class="simulation-info">
+              <h4>{{ name || 'Unnamed Schedule' }}</h4>
+              <div class="simulation-status">
+                @if (isSimulating) {
+                  <mat-icon class="spinning">sync</mat-icon>
+                  <span>Simulating action {{ currentSimulationIndex + 1 }} of {{ getSortedItems().length }}</span>
+                } @else if (simulationComplete) {
+                  <mat-icon class="success">check_circle</mat-icon>
+                  <span>Simulation complete!</span>
+                } @else {
+                  <span>Ready to simulate {{ getSortedItems().length }} actions</span>
+                }
+              </div>
+            </div>
+
+            <div class="simulation-timeline">
+              @for (item of getSortedItems(); track item.id; let i = $index) {
+                <div class="simulation-item"
+                     [class.current]="i === currentSimulationIndex"
+                     [class.completed]="i < currentSimulationIndex"
+                     [class.pending]="i > currentSimulationIndex">
+                  <div class="simulation-time">{{ item.time }}</div>
+                  <div class="simulation-content">
+                    <div class="simulation-device">
+                      <mat-icon>{{ getDeviceType(item.deviceId) === 'train' ? 'train' : 'call_split' }}</mat-icon>
+                      {{ getDeviceName(item.deviceId) }}
+                    </div>
+                    <div class="simulation-action">
+                      {{ getActionDescription(item) }}
+                    </div>
+                    @if (i === currentSimulationIndex && isSimulating) {
+                      <div class="simulation-executing">
+                        <mat-icon class="spinning">sync</mat-icon>
+                        Executing...
+                      </div>
+                    }
+                    @if (i < currentSimulationIndex) {
+                      <div class="simulation-executed">
+                        <mat-icon>check</mat-icon>
+                        Done
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            <div class="simulation-controls">
+              @if (!isSimulating && !simulationComplete) {
+                <button mat-raised-button color="primary" (click)="startSimulation()">
+                  <mat-icon>play_arrow</mat-icon> Start Simulation
+                </button>
+              }
+              @if (isSimulating) {
+                <button mat-raised-button color="warn" (click)="stopSimulation()">
+                  <mat-icon>stop</mat-icon> Stop
+                </button>
+              }
+              @if (simulationComplete) {
+                <button mat-raised-button color="primary" (click)="resetSimulation()">
+                  <mat-icon>replay</mat-icon> Run Again
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: [`
     .dialog-content {
-      min-width: 500px;
+      width: 90vw;
+      max-width: 1200px;
     }
 
     .form-field-full {
@@ -189,22 +328,32 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
       .item-time {
         width: 100px;
+        flex-shrink: 0;
       }
 
       .item-device {
-        width: 150px;
+        flex: 1;
+        min-width: 150px;
       }
 
       .item-action {
-        width: 120px;
+        flex: 1;
+        min-width: 120px;
       }
 
-      .item-speed, .item-fn {
-        width: 70px;
+      .item-speed {
+        width: 100px;
+        flex-shrink: 0;
+      }
+
+      .item-fn {
+        flex: 1;
+        min-width: 200px;
       }
 
       .item-direction {
-        width: 100px;
+        flex: 1;
+        min-width: 100px;
       }
     }
 
@@ -214,11 +363,339 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
       text-align: center;
       padding: 16px;
     }
+
+    .preview-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .preview-dialog {
+      background-color: white;
+      border-radius: 8px;
+      max-width: 700px;
+      max-height: 80vh;
+      width: 90%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    :host-context(.dark-theme) .preview-dialog {
+      background-color: #424242;
+    }
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+
+      h3 {
+        margin: 0;
+      }
+    }
+
+    :host-context(.dark-theme) .preview-header {
+      border-bottom-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .preview-content {
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .preview-schedule-info {
+      margin-bottom: 24px;
+
+      h4 {
+        margin: 0 0 8px 0;
+        font-size: 18px;
+      }
+
+      .preview-days {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .day-chip {
+        padding: 4px 12px;
+        background-color: #e3f2fd;
+        border-radius: 16px;
+        font-size: 12px;
+      }
+    }
+
+    :host-context(.dark-theme) .preview-schedule-info .day-chip {
+      background-color: #1565c0;
+      color: rgba(255, 255, 255, 0.87);
+    }
+
+    .timeline {
+      position: relative;
+      padding-left: 100px;
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: 90px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background-color: #1976d2;
+      }
+    }
+
+    :host-context(.dark-theme) .timeline::before {
+      background-color: #64b5f6;
+    }
+
+    .timeline-item {
+      position: relative;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: flex-start;
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: -16px;
+        top: 4px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background-color: #1976d2;
+        border: 2px solid white;
+      }
+    }
+
+    :host-context(.dark-theme) .timeline-item::before {
+      background-color: #64b5f6;
+      border-color: #424242;
+    }
+
+    .timeline-time {
+      position: absolute;
+      left: -100px;
+      top: 0;
+      font-weight: 500;
+      color: #1976d2;
+      font-size: 14px;
+    }
+
+    :host-context(.dark-theme) .timeline-time {
+      color: #64b5f6;
+    }
+
+    .timeline-content {
+      flex: 1;
+      padding-left: 8px;
+    }
+
+    .timeline-device {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      margin-bottom: 4px;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
+
+    .timeline-action {
+      color: rgba(0, 0, 0, 0.6);
+      font-size: 14px;
+    }
+
+    :host-context(.dark-theme) .timeline-action {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .simulation-dialog {
+      max-width: 800px;
+    }
+
+    .simulation-info {
+      margin-bottom: 24px;
+
+      h4 {
+        margin: 0 0 12px 0;
+        font-size: 18px;
+      }
+
+      .simulation-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px;
+        background-color: #e3f2fd;
+        border-radius: 8px;
+
+        mat-icon {
+          &.spinning {
+            animation: spin 1s linear infinite;
+          }
+
+          &.success {
+            color: #4caf50;
+          }
+        }
+      }
+    }
+
+    :host-context(.dark-theme) .simulation-info .simulation-status {
+      background-color: rgba(25, 118, 210, 0.2);
+    }
+
+    @keyframes spin {
+      from {
+        transform: rotate(0deg);
+      }
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .simulation-timeline {
+      margin-bottom: 24px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .simulation-item {
+      display: flex;
+      padding: 12px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      border-left: 4px solid transparent;
+      background-color: rgba(0, 0, 0, 0.02);
+
+      &.pending {
+        opacity: 0.5;
+      }
+
+      &.current {
+        background-color: #fff3e0;
+        border-left-color: #ff9800;
+      }
+
+      &.completed {
+        background-color: #e8f5e9;
+        border-left-color: #4caf50;
+      }
+    }
+
+    :host-context(.dark-theme) .simulation-item {
+      background-color: rgba(255, 255, 255, 0.05);
+
+      &.current {
+        background-color: rgba(255, 152, 0, 0.2);
+      }
+
+      &.completed {
+        background-color: rgba(76, 175, 80, 0.2);
+      }
+    }
+
+    .simulation-time {
+      font-weight: 500;
+      color: #1976d2;
+      min-width: 80px;
+      flex-shrink: 0;
+    }
+
+    :host-context(.dark-theme) .simulation-time {
+      color: #64b5f6;
+    }
+
+    .simulation-content {
+      flex: 1;
+    }
+
+    .simulation-device {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      margin-bottom: 4px;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
+
+    .simulation-action {
+      color: rgba(0, 0, 0, 0.6);
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    :host-context(.dark-theme) .simulation-action {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .simulation-executing {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #ff9800;
+      font-size: 13px;
+      font-weight: 500;
+
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+    }
+
+    .simulation-executed {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #4caf50;
+      font-size: 13px;
+      font-weight: 500;
+
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+    }
+
+    .simulation-controls {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(0, 0, 0, 0.12);
+    }
+
+    :host-context(.dark-theme) .simulation-controls {
+      border-top-color: rgba(255, 255, 255, 0.12);
+    }
   `]
 })
 export class ScheduleDialogComponent {
   private dialogRef = inject(MatDialogRef<ScheduleDialogComponent>);
   data: ScheduleDialogData = inject(MAT_DIALOG_DATA);
+  private dcc = inject(DccService);
 
   name = '';
   selectedDays: Record<DayKey, boolean> = {
@@ -244,6 +721,12 @@ export class ScheduleDialogComponent {
   };
 
   private itemCounter = 0;
+  showPreview = false;
+  showSimulation = false;
+  isSimulating = false;
+  simulationComplete = false;
+  currentSimulationIndex = -1;
+  private simulationTimer: any = null;
 
   constructor() {
     if (this.data.schedule) {
@@ -263,7 +746,7 @@ export class ScheduleDialogComponent {
     const defaultDevice = this.data.devices[0];
     this.items.push({
       id: `new-item-${++this.itemCounter}`,
-      time: '08:00',
+      time: '08:00:00',
       deviceId: defaultDevice?.id || '',
       action: 'start',
       params: {
@@ -275,6 +758,171 @@ export class ScheduleDialogComponent {
 
   removeItem(index: number): void {
     this.items.splice(index, 1);
+  }
+
+  getDeviceFunctions(deviceId: string) {
+    const device = this.data.devices.find(d => d.id === deviceId);
+    return device?.functions || [];
+  }
+
+  getDeviceName(deviceId: string): string {
+    const device = this.data.devices.find(d => d.id === deviceId);
+    return device?.name || 'Unknown Device';
+  }
+
+  getDeviceType(deviceId: string): 'train' | 'switch' {
+    const device = this.data.devices.find(d => d.id === deviceId);
+    return device?.type || 'train';
+  }
+
+  getSelectedDays(): DayKey[] {
+    return (Object.entries(this.selectedDays) as [DayKey, boolean][])
+      .filter(([, selected]) => selected)
+      .map(([day]) => day);
+  }
+
+  getSortedItems(): ScheduleItem[] {
+    return [...this.items].sort((a, b) => a.time.localeCompare(b.time));
+  }
+
+  getActionDescription(item: ScheduleItem): string {
+    switch (item.action) {
+      case 'start':
+        return `Start at speed ${item.params?.speed || 0} (${item.params?.direction || 'forward'})`;
+      case 'stop':
+        return 'Stop';
+      case 'speed':
+        return `Set speed to ${item.params?.speed || 0}`;
+      case 'function':
+        const fn = this.getDeviceFunctions(item.deviceId).find(f => f.id === item.params?.functionId);
+        const fnName = fn?.name || `F${item.params?.functionId || 0}`;
+        return `Toggle ${fnName} ${item.params?.functionState ? 'ON' : 'OFF'}`;
+      default:
+        return item.action;
+    }
+  }
+
+  previewSchedule(): void {
+    this.showPreview = true;
+  }
+
+  closePreview(): void {
+    this.showPreview = false;
+  }
+
+  simulateSchedule(): void {
+    this.showSimulation = true;
+    this.resetSimulation();
+  }
+
+  closeSimulation(): void {
+    this.stopSimulation();
+    this.showSimulation = false;
+  }
+
+  startSimulation(): void {
+    this.isSimulating = true;
+    this.simulationComplete = false;
+    this.currentSimulationIndex = 0;
+    this.runNextSimulationStep();
+  }
+
+  stopSimulation(): void {
+    this.isSimulating = false;
+    if (this.simulationTimer) {
+      clearTimeout(this.simulationTimer);
+      this.simulationTimer = null;
+    }
+  }
+
+  resetSimulation(): void {
+    this.stopSimulation();
+    this.currentSimulationIndex = -1;
+    this.simulationComplete = false;
+  }
+
+  private runNextSimulationStep(): void {
+    const items = this.getSortedItems();
+    if (this.currentSimulationIndex >= items.length) {
+      this.isSimulating = false;
+      this.simulationComplete = true;
+      return;
+    }
+
+    const currentItem = items[this.currentSimulationIndex];
+
+    console.log(`Executing action ${this.currentSimulationIndex + 1} at ${currentItem.time}`);
+
+    // Execute the actual DCC command
+    this.executeScheduleAction(currentItem);
+
+    // Calculate delay to next action based on time delta
+    let delay = 1500; // Default 1.5 seconds if it's the last item
+    if (this.currentSimulationIndex < items.length - 1) {
+      const nextItem = items[this.currentSimulationIndex + 1];
+      delay = this.calculateTimeDelta(currentItem.time, nextItem.time);
+    }
+
+    console.log(`Waiting ${delay}ms before next action`);
+
+    this.simulationTimer = setTimeout(() => {
+      this.currentSimulationIndex++;
+      if (this.isSimulating) {
+        this.runNextSimulationStep();
+      }
+    }, delay);
+  }
+
+  private calculateTimeDelta(time1: string, time2: string): number {
+    // Parse time in format HH:MM or HH:MM:SS
+    const parseTime = (timeStr: string): number => {
+      const parts = timeStr.split(':').map(Number);
+      const hours = parts[0] || 0;
+      const minutes = parts[1] || 0;
+      const seconds = parts[2] || 0;
+      return hours * 3600 + minutes * 60 + seconds; // Total seconds
+    };
+
+    const seconds1 = parseTime(time1);
+    const seconds2 = parseTime(time2);
+
+    // Calculate difference in seconds
+    const deltaSeconds = seconds2 - seconds1;
+
+    // Use a scaling factor for simulation (e.g., 1 second real time = 100ms simulation)
+    const scaleFactor = 100; // 100ms per second for faster simulation
+
+    const delay = deltaSeconds * scaleFactor;
+
+    console.log(`Time delta: ${time1} -> ${time2} = ${deltaSeconds}s (${delay}ms simulation delay)`);
+
+    return Math.max(delay, 100); // Minimum 100ms between actions
+  }
+
+  private executeScheduleAction(item: ScheduleItem): void {
+    const device = this.data.devices.find(d => d.id === item.deviceId);
+    if (!device) return;
+
+    switch (item.action) {
+      case 'start':
+        this.dcc.setThrottle(device.address, item.params?.speed || 0);
+        this.dcc.setDirection(device.address, item.params?.direction === 'forward');
+        break;
+
+      case 'stop':
+        this.dcc.setThrottle(device.address, 0);
+        break;
+
+      case 'speed':
+        this.dcc.setThrottle(device.address, item.params?.speed || 0);
+        break;
+
+      case 'function':
+        if (item.params?.functionId !== undefined) {
+          this.dcc.setFunction(device.address, item.params.functionId, item.params.functionState || false);
+        }
+        break;
+    }
   }
 
   isValid(): boolean {

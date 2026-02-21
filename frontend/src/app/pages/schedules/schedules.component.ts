@@ -237,7 +237,8 @@ export class SchedulesComponent {
 
   openAddDialog(): void {
     const dialogRef = this.dialog.open(ScheduleDialogComponent, {
-      width: '600px',
+      width: '90vw',
+      maxWidth: '1200px',
       data: { mode: 'add', devices: this.state.devices() } as ScheduleDialogData
     });
 
@@ -253,7 +254,8 @@ export class SchedulesComponent {
 
   openEditDialog(schedule: WeeklySchedule): void {
     const dialogRef = this.dialog.open(ScheduleDialogComponent, {
-      width: '600px',
+      width: '90vw',
+      maxWidth: '1200px',
       data: { mode: 'edit', schedule, devices: this.state.devices() } as ScheduleDialogData
     });
 
