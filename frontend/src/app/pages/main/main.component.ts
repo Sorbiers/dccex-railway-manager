@@ -69,6 +69,17 @@ export class MainComponent {
         this.dcc.setThrottle(train.address, 0);
     }
 
+    resetTrain(train: Device): void {
+        // Stop the train
+        this.dcc.setThrottle(train.address, 0);
+
+        // Reset all functions to OFF
+        const functions = train.functions || [];
+        functions.forEach(fn => {
+            this.dcc.setFunction(train.address, fn.id, false);
+        });
+    }
+
     isFunctionActive(train: Device, functionId: number): boolean {
         return train.activeFunctions?.includes(functionId) || false;
     }
