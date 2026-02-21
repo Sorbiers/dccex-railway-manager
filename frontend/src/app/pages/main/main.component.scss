@@ -15,6 +15,24 @@
   overflow: hidden;
 }
 
+.train-image {
+  text-align: center;
+  margin-bottom: 16px;
+
+  img {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 8px;
+    object-fit: contain;
+  }
+}
+
+.train-info {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 16px;
+}
 .speed-display {
   font-size: 72px;
   font-weight: 300;
@@ -38,22 +56,22 @@
 }
 
 .function-grid-item {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 14px;
-    font-size: 0.9em;
-    max-width: 80px;
-    span {
-        font-size: 0.8em;
-        text-align: center;
-        line-height: 1.2;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        max-width: 100%;
-    }
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 14px;
+  font-size: 0.9em;
+  max-width: 80px;
+  span {
+    font-size: 0.8em;
+    text-align: center;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
 }
 
 .quick-stop {
@@ -170,10 +188,10 @@
 }
 
 .function-accordion-section {
-    width: 100%;
-    padding: 0;
-    margin: 24px 0;
-    overflow: hidden;
+  width: 100%;
+  padding: 0;
+  margin: 24px 0;
+  overflow: hidden;
 }
 
 :host-context(.dark-theme) .function-btn.active {

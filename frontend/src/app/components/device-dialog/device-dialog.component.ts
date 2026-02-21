@@ -9,7 +9,22 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatMenuModule } from '@angular/material/menu';
 import { Device, DccFunction } from '../../models';
+
+interface FunctionPreset {
+  name: string;
+  manufacturer: string;
+  model: string;
+  decoder: string;
+  functions: Array<{
+    fn: number;
+    label: string;
+    icon: string;
+    group: string;
+    momentary: boolean;
+  }>;
+}
 
 export interface DeviceDialogData {
   mode: 'add' | 'edit';
@@ -29,7 +44,8 @@ export interface DeviceDialogData {
     MatButtonModule,
     MatIconModule,
     MatCheckboxModule,
-    MatAutocompleteModule
+    MatAutocompleteModule,
+    MatMenuModule
   ],
   template: `
     <h2 mat-dialog-title>{{ data.mode === 'add' ? 'Add Device' : 'Edit Device' }}</h2>
@@ -54,12 +70,36 @@ export interface DeviceDialogData {
       </mat-form-field>
 
       @if (type === 'train') {
+        <div class="image-upload-section">
+          <h3>Train Image</h3>
+          @if (imageUrl) {
+            <div class="image-preview">
+              <img [src]="imageUrl" [alt]="name">
+              <button mat-icon-button color="warn" (click)="removeImage()" class="remove-image-btn">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          }
+          <input type="file" #fileInput accept="image/*" (change)="onImageSelected($event)" style="display: none">
+          <button mat-stroked-button color="primary" (click)="fileInput.click()">
+            <mat-icon>{{ imageUrl ? 'edit' : 'add_photo_alternate' }}</mat-icon>
+            {{ imageUrl ? 'Change Image' : 'Upload Image' }}
+          </button>
+        </div>
+      }
+
+      @if (type === 'train') {
         <div class="functions-section">
           <div class="section-header">
             <h3>Functions</h3>
-            <button mat-button color="primary" (click)="addFunction()">
-              <mat-icon>add</mat-icon> Add Function
-            </button>
+            <div class="section-header-actions">
+              <button mat-button (click)="importFunctions()">
+                <mat-icon>upload</mat-icon> Import Preset
+              </button>
+              <button mat-button color="primary" (click)="addFunction()">
+                <mat-icon>add</mat-icon> Add Function
+              </button>
+            </div>
           </div>
 
           @for (fn of functions; track fn.id; let i = $index) {
@@ -140,6 +180,11 @@ export interface DeviceDialogData {
         h3 {
           margin: 0;
         }
+
+        .section-header-actions {
+          display: flex;
+          gap: 8px;
+        }
       }
     }
 
@@ -168,6 +213,41 @@ export interface DeviceDialogData {
       text-align: center;
       padding: 16px;
     }
+
+    .image-upload-section {
+      margin-top: 16px;
+      margin-bottom: 16px;
+
+      h3 {
+        margin: 0 0 12px 0;
+        font-size: 14px;
+      }
+
+      .image-preview {
+        position: relative;
+        display: inline-block;
+        margin-bottom: 12px;
+
+        img {
+          max-width: 300px;
+          max-height: 200px;
+          border-radius: 8px;
+          object-fit: contain;
+          display: block;
+        }
+
+        .remove-image-btn {
+          position: absolute;
+          top: 4px;
+          right: 4px;
+          background-color: rgba(0, 0, 0, 0.5);
+
+          mat-icon {
+            color: white;
+          }
+        }
+      }
+    }
   `]
 })
 export class DeviceDialogComponent {
@@ -178,6 +258,7 @@ export class DeviceDialogComponent {
   type: 'train' | 'switch' = 'train';
   address = 3;
   functions: DccFunction[] = [];
+  imageUrl = '';
 
   iconSuggestions = [
     'lightbulb',
@@ -204,12 +285,84 @@ export class DeviceDialogComponent {
     'headset'
   ];
 
+  functionPresets: FunctionPreset[] = [
+    {
+      name: 'Piko SmartDecoder 4.1 Sound PluX22',
+      manufacturer: 'PIKO',
+      model: 'BR360',
+      decoder: 'SmartDecoder',
+      functions: [
+        { fn: 0, label: 'Lights', icon: 'lightbulb', group: 'lights', momentary: false },
+        { fn: 1, label: 'Engine', icon: 'power_settings_new', group: 'quick', momentary: false },
+        { fn: 2, label: 'Horn', icon: 'volume_up', group: 'quick', momentary: true },
+        { fn: 3, label: 'Macro Horn', icon: 'campaign', group: 'sounds', momentary: true },
+        { fn: 4, label: 'Cab Light', icon: 'light', group: 'lights', momentary: false },
+        { fn: 5, label: 'Preheater', icon: 'whatshot', group: 'other', momentary: false },
+        { fn: 6, label: 'Chassis Light', icon: 'highlight', group: 'lights', momentary: false },
+        { fn: 7, label: 'Shunting Mode', icon: 'slow_motion_video', group: 'other', momentary: false },
+        { fn: 8, label: 'Hand Brake', icon: 'hand_bones', group: 'other', momentary: true },
+        { fn: 9, label: 'Engine Flap', icon: 'sensor_door', group: 'other', momentary: true },
+        { fn: 10, label: 'Cab Door', icon: 'door_open', group: 'other', momentary: true },
+        { fn: 11, label: 'Cab Window', icon: 'window', group: 'other', momentary: true },
+        { fn: 12, label: 'Machine Room Door', icon: 'meeting_room', group: 'other', momentary: true },
+        { fn: 13, label: 'Red Lights', icon: 'light_mode', group: 'lights', momentary: false },
+        { fn: 14, label: 'Air Valve', icon: 'air', group: 'sounds', momentary: true },
+        { fn: 15, label: 'Coupler', icon: 'link', group: 'other', momentary: true },
+        { fn: 16, label: 'Brake Test', icon: 'quiz', group: 'other', momentary: true },
+        { fn: 17, label: 'Bell', icon: 'notifications', group: 'sounds', momentary: false },
+        { fn: 18, label: 'Battery Switch', icon: 'battery_charging_full', group: 'other', momentary: false },
+        { fn: 19, label: 'Radio 1', icon: 'radio', group: 'sounds', momentary: true },
+        { fn: 20, label: 'Radio 2', icon: 'radio', group: 'sounds', momentary: true },
+        { fn: 21, label: 'Drain', icon: 'water_drop', group: 'other', momentary: true },
+        { fn: 22, label: 'Sanding', icon: 'grain', group: 'other', momentary: true },
+        { fn: 23, label: 'Curve Squeal', icon: 'turn_right', group: 'sounds', momentary: false },
+        { fn: 24, label: 'Rail Clank', icon: 'railway_alert', group: 'sounds', momentary: false },
+        { fn: 25, label: 'Train Light Push', icon: 'train', group: 'lights', momentary: false },
+        { fn: 26, label: 'Train Light Pull', icon: 'train', group: 'lights', momentary: false },
+        { fn: 27, label: 'Volume', icon: 'volume_up', group: 'sounds', momentary: false },
+        { fn: 28, label: 'Tunnel Mode', icon: 'mode_night', group: 'other', momentary: false }
+      ]
+    }
+  ];
+
   constructor() {
     if (this.data.device) {
       this.name = this.data.device.name;
       this.type = this.data.device.type;
       this.address = this.data.device.address;
       this.functions = [...(this.data.device.functions || [])];
+      this.imageUrl = this.data.device.imageUrl || '';
+    }
+  }
+
+  onImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.imageUrl = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  removeImage(): void {
+    this.imageUrl = '';
+  }
+
+  importFunctions(): void {
+    // For now, just import the first preset
+    // In the future, could open a dialog to select from multiple presets
+    const preset = this.functionPresets[0];
+    if (preset) {
+      this.functions = preset.functions.map(f => ({
+        id: f.fn,
+        name: f.label,
+        icon: f.icon,
+        group: f.group as 'quick' | 'lights' | 'sounds' | 'other',
+        momentary: f.momentary
+      }));
     }
   }
 
@@ -246,7 +399,8 @@ export class DeviceDialogComponent {
       name: this.name.trim(),
       type: this.type,
       address: this.address,
-      functions: this.type === 'train' ? this.functions : undefined
+      functions: this.type === 'train' ? this.functions : undefined,
+      imageUrl: this.type === 'train' ? this.imageUrl : undefined
     };
 
     this.dialogRef.close(device);

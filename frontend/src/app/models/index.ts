@@ -16,6 +16,7 @@ export interface Device {
   direction?: 'forward' | 'reverse';
   functions?: DccFunction[];
   activeFunctions?: number[];
+  imageUrl?: string;
 }
 
 export interface ScheduleItem {
