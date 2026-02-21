@@ -88,8 +88,8 @@ export class MainComponent {
     }
 
     getMainFunctions(train: Device): DccFunction[] {
-        // First 3 functions (typically headlight, bell, horn)
-        return (train.functions || []).slice(0, 3);
+        // Quick access functions
+        return (train.functions || []).filter(f => f.group === 'quick');
     }
 
     getLightsFunctions(train: Device): DccFunction[] {

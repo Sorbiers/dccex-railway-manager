@@ -8,6 +8,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { Device, DccFunction } from '../../models';
 
 export interface DeviceDialogData {
@@ -27,7 +28,8 @@ export interface DeviceDialogData {
     MatSelectModule,
     MatButtonModule,
     MatIconModule,
-    MatCheckboxModule
+    MatCheckboxModule,
+    MatAutocompleteModule
   ],
   template: `
     <h2 mat-dialog-title>{{ data.mode === 'add' ? 'Add Device' : 'Edit Device' }}</h2>
@@ -74,23 +76,20 @@ export interface DeviceDialogData {
 
               <mat-form-field class="fn-icon">
                 <mat-label>Icon</mat-label>
-                <mat-select [(ngModel)]="fn.icon">
-                  <mat-option value="lightbulb">Lightbulb</mat-option>
-                  <mat-option value="notifications">Bell</mat-option>
-                  <mat-option value="volume_up">Horn</mat-option>
-                  <mat-option value="light">Cab Light</mat-option>
-                  <mat-option value="highlight">Ditch Lights</mat-option>
-                  <mat-option value="link">Coupler</mat-option>
-                  <mat-option value="cloud">Steam</mat-option>
-                  <mat-option value="speed">Dynamic Brake</mat-option>
-                  <mat-option value="volume_off">Mute</mat-option>
-                  <mat-option value="music_note">Sound</mat-option>
-                </mat-select>
+                <input matInput [(ngModel)]="fn.icon" [matAutocomplete]="auto" placeholder="e.g., lightbulb">
+                <mat-autocomplete #auto="matAutocomplete">
+                  @for (icon of iconSuggestions; track icon) {
+                    <mat-option [value]="icon">
+                      <mat-icon>{{ icon }}</mat-icon> {{ icon }}
+                    </mat-option>
+                  }
+                </mat-autocomplete>
               </mat-form-field>
 
               <mat-form-field class="fn-group">
                 <mat-label>Group</mat-label>
                 <mat-select [(ngModel)]="fn.group">
+                  <mat-option value="quick">Quick Access</mat-option>
                   <mat-option value="lights">Lights</mat-option>
                   <mat-option value="sounds">Sounds</mat-option>
                   <mat-option value="other">Other</mat-option>
@@ -151,7 +150,7 @@ export interface DeviceDialogData {
       margin-bottom: 8px;
 
       .fn-id {
-        width: 60px;
+        width: 100px;
       }
 
       .fn-name {
@@ -159,7 +158,7 @@ export interface DeviceDialogData {
       }
 
       .fn-icon, .fn-group {
-        width: 100px;
+        width: 150px;
       }
     }
 
@@ -180,6 +179,31 @@ export class DeviceDialogComponent {
   address = 3;
   functions: DccFunction[] = [];
 
+  iconSuggestions = [
+    'lightbulb',
+    'notifications',
+    'volume_up',
+    'light',
+    'highlight',
+    'link',
+    'cloud',
+    'speed',
+    'volume_off',
+    'music_note',
+    'radio_button_unchecked',
+    'flash_on',
+    'wb_sunny',
+    'bedtime',
+    'air',
+    'settings',
+    'build',
+    'lock',
+    'power_settings_new',
+    'visibility',
+    'mic',
+    'headset'
+  ];
+
   constructor() {
     if (this.data.device) {
       this.name = this.data.device.name;
@@ -198,7 +222,7 @@ export class DeviceDialogComponent {
       id: nextId,
       name: '',
       icon: 'radio_button_unchecked',
-      group: 'other',
+      group: 'quick',
       momentary: false
     });
   }

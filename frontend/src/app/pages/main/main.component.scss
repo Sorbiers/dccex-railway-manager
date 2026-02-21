@@ -37,6 +37,25 @@
   margin-top: 5px;
 }
 
+.function-grid-item {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 14px;
+    font-size: 0.9em;
+    max-width: 80px;
+    span {
+        font-size: 0.8em;
+        text-align: center;
+        line-height: 1.2;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+    }
+}
+
 .quick-stop {
   display: flex;
   justify-content: center;

@@ -3,7 +3,7 @@ export interface DccFunction {
   name: string;
   icon?: string;
   momentary?: boolean;
-  group?: 'lights' | 'sounds' | 'other';
+  group?: 'quick' | 'lights' | 'sounds' | 'other';
 }
 
 export interface Device {

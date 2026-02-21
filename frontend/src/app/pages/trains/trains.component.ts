@@ -42,7 +42,8 @@ export class TrainsComponent {
 
   openAddDialog(): void {
     const dialogRef = this.dialog.open(DeviceDialogComponent, {
-      width: '500px',
+      minWidth: '500px',
+      width: '90vw',
       data: { mode: 'add' } as DeviceDialogData
     });
 
@@ -58,7 +59,8 @@ export class TrainsComponent {
 
   openEditDialog(device: Device): void {
     const dialogRef = this.dialog.open(DeviceDialogComponent, {
-      width: '500px',
+      minWidth: '500px',
+      width: '90vw',
       data: { mode: 'edit', device } as DeviceDialogData
     });
 
