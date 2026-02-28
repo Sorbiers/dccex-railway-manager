@@ -71,6 +71,13 @@ export interface DeviceDialogData {
         <input matInput type="number" [(ngModel)]="address" min="1" max="9999">
       </mat-form-field>
 
+      @if (type === 'switch') {
+        <mat-form-field class="form-field-full">
+          <mat-label>Output</mat-label>
+          <input matInput type="number" [(ngModel)]="output" min="0">
+        </mat-form-field>
+      }
+
       @if (type === 'train') {
         <div class="image-upload-section">
           <h3>Train Image</h3>
@@ -477,6 +484,7 @@ export class DeviceDialogComponent {
   name = '';
   type: 'train' | 'switch' = 'train';
   address = 3;
+  output = 0;
   functions: DccFunction[] = [];
   imageUrl = '';
   showPreview = false;
@@ -552,6 +560,7 @@ export class DeviceDialogComponent {
       this.name = this.data.device.name;
       this.type = this.data.device.type;
       this.address = this.data.device.address;
+      this.output = this.data.device.output || 0;
       this.functions = [...(this.data.device.functions || [])];
       this.imageUrl = this.data.device.imageUrl || '';
     }
@@ -661,6 +670,7 @@ export class DeviceDialogComponent {
       name: this.name.trim(),
       type: this.type,
       address: this.address,
+      output: this.type === 'switch' ? this.output : undefined,
       functions: this.type === 'train' ? this.functions : undefined,
       imageUrl: this.type === 'train' ? this.imageUrl : undefined
     };

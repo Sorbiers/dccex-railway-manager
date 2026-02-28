@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -10,7 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDividerModule } from '@angular/material/divider';
 import { WeeklySchedule, ScheduleItem, Device } from '../../models';
-import { DccService } from '../../services/dcc.service';
+import { ApiService } from '../../services/api.service';
 
 export interface ScheduleDialogData {
   mode: 'add' | 'edit';
@@ -62,9 +62,14 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
       <div class="items-section">
         <div class="section-header">
           <h3>Actions</h3>
-          <button mat-button color="primary" (click)="addItem()">
-            <mat-icon>add</mat-icon> Add Action
-          </button>
+          <div class="section-actions">
+            <button mat-button color="accent" (click)="sortItems()">
+              <mat-icon>sort</mat-icon> Sort
+            </button>
+            <button mat-button color="primary" (click)="addItem()">
+              <mat-icon>add</mat-icon> Add Action
+            </button>
+          </div>
         </div>
 
         @for (item of items; track item.id; let i = $index) {
@@ -90,6 +95,7 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
                 <mat-option value="stop">Stop</mat-option>
                 <mat-option value="speed">Set Speed</mat-option>
                 <mat-option value="function">Toggle Function</mat-option>
+                <mat-option value="reset">Reset (Stop + Clear Functions)</mat-option>
               </mat-select>
             </mat-form-field>
 
@@ -113,7 +119,7 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
             @if (item.action === 'function') {
               <mat-form-field class="item-fn">
                 <mat-label>Function</mat-label>
-                <mat-select [(ngModel)]="item.params!.functionId">
+                <mat-select [(ngModel)]="item.params!.functionId" (selectionChange)="onFunctionSelected(item, $event.value)">
                   @for (fn of getDeviceFunctions(item.deviceId); track fn.id) {
                     <mat-option [value]="fn.id">
                       <mat-icon>{{ fn.icon || 'radio_button_unchecked' }}</mat-icon>
@@ -126,6 +132,12 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
                 </mat-select>
               </mat-form-field>
               <mat-checkbox [(ngModel)]="item.params!.functionState">On</mat-checkbox>
+              @if (item.params!.momentary) {
+                <mat-form-field class="item-duration">
+                  <mat-label>Duration (s)</mat-label>
+                  <input matInput type="number" [(ngModel)]="item.params!.duration" min="0" step="0.1" placeholder="0.5">
+                </mat-form-field>
+              }
             }
 
             <button mat-icon-button color="warn" (click)="removeItem(i)">
@@ -316,6 +328,11 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
         h3 {
           margin: 0;
         }
+
+        .section-actions {
+          display: flex;
+          gap: 8px;
+        }
       }
     }
 
@@ -327,7 +344,7 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
       flex-wrap: wrap;
 
       .item-time {
-        width: 100px;
+        width: 150px;
         flex-shrink: 0;
       }
 
@@ -692,10 +709,10 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
     }
   `]
 })
-export class ScheduleDialogComponent {
+export class ScheduleDialogComponent implements OnDestroy {
   private dialogRef = inject(MatDialogRef<ScheduleDialogComponent>);
   data: ScheduleDialogData = inject(MAT_DIALOG_DATA);
-  private dcc = inject(DccService);
+  private api = inject(ApiService);
 
   name = '';
   selectedDays: Record<DayKey, boolean> = {
@@ -726,7 +743,7 @@ export class ScheduleDialogComponent {
   isSimulating = false;
   simulationComplete = false;
   currentSimulationIndex = -1;
-  private simulationTimer: any = null;
+  private statusCheckInterval: any = null;
 
   constructor() {
     if (this.data.schedule) {
@@ -760,9 +777,25 @@ export class ScheduleDialogComponent {
     this.items.splice(index, 1);
   }
 
+  sortItems(): void {
+    this.items.sort((a, b) => a.time.localeCompare(b.time));
+  }
+
   getDeviceFunctions(deviceId: string) {
     const device = this.data.devices.find(d => d.id === deviceId);
     return device?.functions || [];
+  }
+
+  onFunctionSelected(item: ScheduleItem, functionId: number): void {
+    const device = this.data.devices.find(d => d.id === item.deviceId);
+    const fn = device?.functions?.find(f => f.id === functionId);
+
+    if (fn && item.params) {
+      item.params.momentary = fn.momentary || false;
+      if (fn.momentary && !item.params.duration) {
+        item.params.duration = 0.5; // Default 0.5 seconds for momentary
+      }
+    }
   }
 
   getDeviceName(deviceId: string): string {
@@ -796,7 +829,10 @@ export class ScheduleDialogComponent {
       case 'function':
         const fn = this.getDeviceFunctions(item.deviceId).find(f => f.id === item.params?.functionId);
         const fnName = fn?.name || `F${item.params?.functionId || 0}`;
-        return `Toggle ${fnName} ${item.params?.functionState ? 'ON' : 'OFF'}`;
+        const durationText = item.params?.momentary && item.params?.duration ? ` (${item.params.duration}s)` : '';
+        return `Toggle ${fnName} ${item.params?.functionState ? 'ON' : 'OFF'}${durationText}`;
+      case 'reset':
+        return 'Reset (Stop + Clear All Functions)';
       default:
         return item.action;
     }
@@ -824,15 +860,41 @@ export class ScheduleDialogComponent {
     this.isSimulating = true;
     this.simulationComplete = false;
     this.currentSimulationIndex = 0;
-    this.runNextSimulationStep();
+
+    // Start backend simulation
+    const scheduleId = this.data.schedule?.id || 'temp-schedule';
+    this.api.simulateSchedule(scheduleId, this.getSortedItems()).subscribe({
+      next: (success) => {
+        if (success) {
+          console.log('Backend simulation started');
+          this.startStatusPolling();
+        } else {
+          console.error('Failed to start simulation');
+          this.isSimulating = false;
+        }
+      },
+      error: (err) => {
+        console.error('Error starting simulation:', err);
+        this.isSimulating = false;
+      }
+    });
   }
 
   stopSimulation(): void {
     this.isSimulating = false;
-    if (this.simulationTimer) {
-      clearTimeout(this.simulationTimer);
-      this.simulationTimer = null;
-    }
+    this.stopStatusPolling();
+
+    // Cancel backend simulation
+    this.api.cancelSimulation().subscribe({
+      next: (success) => {
+        if (success) {
+          console.log('Simulation cancelled');
+        }
+      },
+      error: (err) => {
+        console.error('Error cancelling simulation:', err);
+      }
+    });
   }
 
   resetSimulation(): void {
@@ -841,87 +903,48 @@ export class ScheduleDialogComponent {
     this.simulationComplete = false;
   }
 
-  private runNextSimulationStep(): void {
-    const items = this.getSortedItems();
-    if (this.currentSimulationIndex >= items.length) {
-      this.isSimulating = false;
-      this.simulationComplete = true;
-      return;
-    }
+  private startStatusPolling(): void {
+    this.stopStatusPolling();
 
-    const currentItem = items[this.currentSimulationIndex];
-
-    console.log(`Executing action ${this.currentSimulationIndex + 1} at ${currentItem.time}`);
-
-    // Execute the actual DCC command
-    this.executeScheduleAction(currentItem);
-
-    // Calculate delay to next action based on time delta
-    let delay = 1500; // Default 1.5 seconds if it's the last item
-    if (this.currentSimulationIndex < items.length - 1) {
-      const nextItem = items[this.currentSimulationIndex + 1];
-      delay = this.calculateTimeDelta(currentItem.time, nextItem.time);
-    }
-
-    console.log(`Waiting ${delay}ms before next action`);
-
-    this.simulationTimer = setTimeout(() => {
-      this.currentSimulationIndex++;
-      if (this.isSimulating) {
-        this.runNextSimulationStep();
-      }
-    }, delay);
-  }
-
-  private calculateTimeDelta(time1: string, time2: string): number {
-    // Parse time in format HH:MM or HH:MM:SS
-    const parseTime = (timeStr: string): number => {
-      const parts = timeStr.split(':').map(Number);
-      const hours = parts[0] || 0;
-      const minutes = parts[1] || 0;
-      const seconds = parts[2] || 0;
-      return hours * 3600 + minutes * 60 + seconds; // Total seconds
-    };
-
-    const seconds1 = parseTime(time1);
-    const seconds2 = parseTime(time2);
-
-    // Calculate difference in seconds
-    const deltaSeconds = seconds2 - seconds1;
-
-    // Use a scaling factor for simulation (e.g., 1 second real time = 100ms simulation)
-    const scaleFactor = 100; // 100ms per second for faster simulation
-
-    const delay = deltaSeconds * scaleFactor;
-
-    console.log(`Time delta: ${time1} -> ${time2} = ${deltaSeconds}s (${delay}ms simulation delay)`);
-
-    return Math.max(delay, 100); // Minimum 100ms between actions
-  }
-
-  private executeScheduleAction(item: ScheduleItem): void {
-    const device = this.data.devices.find(d => d.id === item.deviceId);
-    if (!device) return;
-
-    switch (item.action) {
-      case 'start':
-        this.dcc.setThrottle(device.address, item.params?.speed || 0);
-        this.dcc.setDirection(device.address, item.params?.direction === 'forward');
-        break;
-
-      case 'stop':
-        this.dcc.setThrottle(device.address, 0);
-        break;
-
-      case 'speed':
-        this.dcc.setThrottle(device.address, item.params?.speed || 0);
-        break;
-
-      case 'function':
-        if (item.params?.functionId !== undefined) {
-          this.dcc.setFunction(device.address, item.params.functionId, item.params.functionState || false);
+    // Poll every 200ms to update UI
+    this.statusCheckInterval = setInterval(() => {
+      this.api.getSimulationStatus().subscribe({
+        next: (status) => {
+          if (status) {
+            this.currentSimulationIndex = status.currentIndex;
+            if (status.completed) {
+              this.isSimulating = false;
+              this.simulationComplete = true;
+              this.stopStatusPolling();
+            }
+          } else {
+            // No simulation running
+            if (this.isSimulating) {
+              this.isSimulating = false;
+              this.simulationComplete = true;
+              this.stopStatusPolling();
+            }
+          }
+        },
+        error: (err) => {
+          console.error('Error getting simulation status:', err);
         }
-        break;
+      });
+    }, 200);
+  }
+
+  private stopStatusPolling(): void {
+    if (this.statusCheckInterval) {
+      clearInterval(this.statusCheckInterval);
+      this.statusCheckInterval = null;
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.stopStatusPolling();
+    // If simulation is running, cancel it
+    if (this.isSimulating) {
+      this.api.cancelSimulation().subscribe();
     }
   }
 

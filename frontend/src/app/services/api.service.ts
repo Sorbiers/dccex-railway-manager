@@ -103,4 +103,31 @@ export class ApiService {
         return this.http.post<ApiResponse<void>>(`${this.baseUrl}/dcc/disconnect`, {})
             .pipe(map(res => res.success));
     }
+
+    // Schedule execution
+    executeScheduleAction(deviceId: string, action: string, params?: any): Observable<boolean> {
+        return this.http.post<ApiResponse<void>>(`${this.baseUrl}/dcc/execute-schedule-action`, {
+            deviceId,
+            action,
+            params
+        }).pipe(map(res => res.success));
+    }
+
+    // Schedule simulation
+    simulateSchedule(scheduleId: string, items: any[]): Observable<boolean> {
+        return this.http.post<ApiResponse<void>>(`${this.baseUrl}/dcc/simulate-schedule`, {
+            scheduleId,
+            items
+        }).pipe(map(res => res.success));
+    }
+
+    cancelSimulation(): Observable<boolean> {
+        return this.http.post<ApiResponse<void>>(`${this.baseUrl}/dcc/cancel-simulation`, {})
+            .pipe(map(res => res.success));
+    }
+
+    getSimulationStatus(): Observable<any> {
+        return this.http.get<ApiResponse<any>>(`${this.baseUrl}/dcc/simulation-status`)
+            .pipe(map(res => res.data));
+    }
 }

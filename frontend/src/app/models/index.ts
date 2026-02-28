@@ -17,18 +17,21 @@ export interface Device {
   functions?: DccFunction[];
   activeFunctions?: number[];
   imageUrl?: string;
+  output?: number;
 }
 
 export interface ScheduleItem {
   id: string;
   time: string;
   deviceId: string;
-  action: 'start' | 'stop' | 'speed' | 'function';
+  action: 'start' | 'stop' | 'speed' | 'function' | 'reset';
   params?: {
     speed?: number;
     direction?: 'forward' | 'reverse';
     functionId?: number;
     functionState?: boolean;
+    momentary?: boolean;
+    duration?: number;
   };
 }
 
