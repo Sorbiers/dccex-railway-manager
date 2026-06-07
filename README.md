@@ -2,6 +2,8 @@
 
 A full-stack web application for controlling [DCC-EX](https://dcc-ex.com/) model railroads. It provides a mobile-first interface to drive locomotives, throw turnouts, control color-light signals, and run timed schedules — all talking to a DCC-EX command station over the network.
 
+> ⚠️ **Work in progress.** This project is under active development. Features may be incomplete or change without notice, and breaking changes can land at any time. Use at your own risk.
+
 ## Features
 
 - **Throttle control** — per-train speed, direction, and DCC function controls (lights, sound, etc.) with a live speedometer gauge.
