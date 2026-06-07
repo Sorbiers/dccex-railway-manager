@@ -54,3 +54,6 @@ temp/
 .claude/
 release/
 release.zip
+
+# Local deployment script (contains private server credentials)
+deploy.bat
