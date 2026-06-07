@@ -1,0 +1,28 @@
+services:
+  app:
+    build: .
+    image: dccex-railway-manager
+    container_name: dccex-railway-manager
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      # Persist devices / schedules / settings across restarts and rebuilds
+      - dccex-data:/app/dist/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    # If your DCC-EX command station is only reachable on the host LAN and the
+    # default bridge network can't reach it, uncomment host networking (Linux
+    # only) and remove the `ports:` mapping above:
+    # network_mode: host
+
+volumes:
+  dccex-data:

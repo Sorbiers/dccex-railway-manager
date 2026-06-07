@@ -30,8 +30,33 @@ Browser (Angular)  ──HTTP/WS──►  Backend (Express)  ──TCP──►
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 20+ (for local development), **or** Docker — for containerized deployment
 - A DCC-EX command station reachable over the network (WiThrottle/native TCP, default `192.168.4.1:2560`)
+
+## Quick start with Docker (recommended)
+
+The whole app (frontend + backend on a single port) ships as one image. With [Docker](https://docs.docker.com/get-docker/) installed:
+
+```bash
+docker compose up -d --build
+```
+
+Then open <http://localhost:3000> and set your command station host/port on the Settings page.
+
+- The image is multi-stage: it builds the Angular frontend and the TypeScript backend, then runs a slim production image that serves both.
+- Devices, schedules, and settings persist in the `dccex-data` named volume across restarts and rebuilds.
+- Override the published port with the `PORT` env var, e.g. `PORT=8080 docker compose up -d`.
+- A `/api/health` healthcheck is built in (`docker compose ps` shows health status).
+
+Common operations:
+
+```bash
+docker compose logs -f      # follow logs
+docker compose down         # stop and remove the container (data volume kept)
+docker compose down -v      # also remove the data volume (wipes saved devices/schedules)
+```
+
+> **Reaching the command station:** the container talks to your DCC-EX station over its network address (set in Settings). The default bridge network reaches LAN devices via NAT. If your station is only reachable on the host LAN segment and the bridge can't see it, uncomment `network_mode: host` in `docker-compose.yml` (Linux only).
 
 ## Getting started (development)
 

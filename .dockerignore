@@ -1,0 +1,23 @@
+# Dependencies & build artifacts (rebuilt inside the image)
+**/node_modules
+**/dist
+frontend/.angular
+
+# Release packaging
+release/
+release.zip
+
+# VCS & tooling
+.git
+.gitignore
+.claude/
+
+# Local-only files
+deploy.bat
+*.md
+!README.md
+
+# Logs / OS cruft
+*.log
+.DS_Store
+Thumbs.db
