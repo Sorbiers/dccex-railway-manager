@@ -55,7 +55,12 @@ export class DccService extends EventEmitter {
         console.error('DCC-EX connection error:', err.message);
         this.status.connected = false;
         this.status.lastError = err.message;
-        this.emit('error', err);
+        // NOTE: do NOT emit 'error' here. On an EventEmitter, emitting 'error'
+        // with no registered listener makes Node throw and crashes the whole
+        // process. A command-station connection failure must never take the
+        // backend down; clients learn of it via the 'status' broadcast
+        // (status.lastError), and 'close' triggers the reconnect timer.
+        this.emit('dcc-error', err);
         this.emit('status', this.status);
         resolve(false);
       });
