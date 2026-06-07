@@ -76,6 +76,24 @@ router.post('/command', (req: Request, res: Response) => {
         }
         break;
 
+      case 'signal': {
+        const { deviceId, value: aspectIndex } = req.body;
+        if (deviceId !== undefined && aspectIndex !== undefined) {
+          const signalDevice = dataService.getDevices().find(d => d.id === deviceId);
+          if (signalDevice && signalDevice.signalAspects) {
+            const targetIdx: number = aspectIndex; // -1 = all off
+            signalDevice.signalAspects.forEach((aspect, i) => {
+              const isActive = i === targetIdx;
+              const pinActive = aspect.reverse ? !isActive : isActive;
+              dccService.setVirtualPin(aspect.vgpioAddress, pinActive);
+            });
+            dataService.updateDevice(signalDevice.id, { signalState: targetIdx });
+            success = true;
+          }
+        }
+        break;
+      }
+
       default:
         return res.status(400).json({ success: false, error: 'Unknown command type' });
     }

@@ -128,4 +128,21 @@ export class DccService {
       error: (err) => console.error('Failed to set turnout', err)
     });
   }
+
+  setSignalAspect(deviceId: string, aspectIndex: number): void {
+    const command: DccCommand = {
+      type: 'signal',
+      deviceId,
+      value: aspectIndex
+    };
+
+    this.api.sendCommand(command).subscribe({
+      next: (success) => {
+        if (success) {
+          this.state.updateDeviceLocally(deviceId, { signalState: aspectIndex });
+        }
+      },
+      error: (err) => console.error('Failed to set signal aspect', err)
+    });
+  }
 }

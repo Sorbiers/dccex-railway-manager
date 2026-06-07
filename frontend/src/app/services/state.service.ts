@@ -47,6 +47,7 @@ export class StateService {
     readonly trains = computed(() => this._devices().filter(d => d.type === 'train'));
     readonly enabledTrains = computed(() => this.trains().filter(d => d.enabled));
     readonly switches = computed(() => this._devices().filter(d => d.type === 'switch'));
+    readonly lightSignals = computed(() => this._devices().filter(d => d.type === 'light_signal'));
 
     readonly selectedTrain = computed(() => {
         const id = this._selectedTrainId();

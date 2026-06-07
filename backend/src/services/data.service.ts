@@ -63,16 +63,29 @@ function writeJsonFile<T>(filename: string, data: T): void {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
 }
 
+export interface SignalAspect {
+  name: string;
+  vgpioAddress: number;
+  reverse: boolean;
+}
+
 export interface Device {
   id: string;
   name: string;
-  type: 'train' | 'switch';
+  type: 'train' | 'switch' | 'light_signal';
   address: number;
   enabled: boolean;
   speed?: number;
   direction?: 'forward' | 'reverse';
   functions?: DccFunction[];
   activeFunctions?: number[];
+  output?: number;
+  output2?: number;
+  turnoutType?: string;
+  turnoutState?: number;
+  signalType?: '3-aspect' | '2-aspect';
+  signalAspects?: SignalAspect[];
+  signalState?: number;
 }
 
 export interface DccFunction {

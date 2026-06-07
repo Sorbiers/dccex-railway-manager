@@ -803,7 +803,7 @@ export class ScheduleDialogComponent implements OnDestroy {
     return device?.name || 'Unknown Device';
   }
 
-  getDeviceType(deviceId: string): 'train' | 'switch' {
+  getDeviceType(deviceId: string): 'train' | 'switch' | 'light_signal' {
     const device = this.data.devices.find(d => d.id === deviceId);
     return device?.type || 'train';
   }

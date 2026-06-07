@@ -199,6 +199,11 @@ export class DccService extends EventEmitter {
     return this.sendCommand(`<T ${id} ${thrown ? 1 : 0}>`);
   }
 
+  // Virtual GPIO pin control: <z pin> to set HIGH, <z -pin> to set LOW
+  setVirtualPin(pin: number, active: boolean): boolean {
+    return this.sendCommand(active ? `<z ${pin}>` : `<z -${pin}>`);
+  }
+
   getStatus(): DccStatus {
     return { ...this.status };
   }

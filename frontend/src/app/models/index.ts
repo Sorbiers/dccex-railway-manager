@@ -6,10 +6,23 @@ export interface DccFunction {
   group?: 'quick' | 'lights' | 'sounds' | 'other';
 }
 
+export interface SignalAspect {
+  name: string;
+  vgpioAddress: number;
+  reverse: boolean;
+}
+
+export interface TurnoutType {
+  id: string;
+  name: string;
+  description: string;
+  svgIconCode: string;
+}
+
 export interface Device {
   id: string;
   name: string;
-  type: 'train' | 'switch';
+  type: 'train' | 'switch' | 'light_signal';
   address: number;
   enabled: boolean;
   speed?: number;
@@ -18,6 +31,12 @@ export interface Device {
   activeFunctions?: number[];
   imageUrl?: string;
   output?: number;
+  output2?: number;
+  turnoutType?: string;
+  turnoutState?: number;
+  signalType?: '3-aspect' | '2-aspect';
+  signalAspects?: SignalAspect[];
+  signalState?: number;
 }
 
 export interface ScheduleItem {
@@ -72,8 +91,9 @@ export interface ConnectionStatus {
 }
 
 export interface DccCommand {
-  type: 'throttle' | 'function' | 'power' | 'emergency' | 'turnout' | 'direction';
+  type: 'throttle' | 'function' | 'power' | 'emergency' | 'turnout' | 'direction' | 'signal';
   address?: number;
   value?: number;
   state?: boolean;
+  deviceId?: string;
 }
