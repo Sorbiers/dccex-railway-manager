@@ -1,0 +1,34 @@
+<div class="speed-slider" [class.disabled]="disabled">
+    <button type="button" class="step-btn" [style.background]="accent" (click)="bump(bumpStep)"
+        [disabled]="disabled || current() >= max" aria-label="Increase speed">
+        <mat-icon>add</mat-icon>
+    </button>
+
+    <div #track class="track-area" (pointerdown)="onTrackPointerDown($event)" (pointermove)="onPointerMove($event)"
+        (pointerup)="onPointerUp($event)" (pointercancel)="onPointerUp($event)">
+
+        <!-- clipped channel -->
+        <div class="channel">
+            <div class="fill" [style.height.%]="pct()"
+                [style.background]="'linear-gradient(to top, ' + accent + ', ' + accent + 'cc)'"></div>
+            <div class="ticks">
+                @for (t of ticks; track $index) {
+                <span class="tick" [class.on]="$even"></span>
+                }
+            </div>
+        </div>
+
+        <!-- handle floats above the channel -->
+        <div class="handle" [style.bottom.%]="pct()" [style.border-color]="accent">
+            <span class="grip">
+                <i></i><i></i><i></i>
+            </span>
+            <span class="handle-value" [style.color]="accent">{{ current() }}</span>
+        </div>
+    </div>
+
+    <button type="button" class="step-btn" [style.background]="accent" (click)="bump(-bumpStep)"
+        [disabled]="disabled || current() <= min" aria-label="Decrease speed">
+        <mat-icon>remove</mat-icon>
+    </button>
+</div>

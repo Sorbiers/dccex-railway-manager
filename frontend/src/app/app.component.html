@@ -1,4 +1,68 @@
-<div class="app-container" [class.dark-theme]="isDarkTheme()">
+<div class="app-container" [class.dark-theme]="isDarkTheme()" [class.kiosk]="layout.kiosk()">
+
+    @if (layout.kiosk()) {
+    <!-- ── Kiosk top bar (Variant A "Refined Material") ───────────────────── -->
+    <div class="kiosk-top-bar">
+        <a class="kiosk-brand" routerLink="/" matTooltip="Throttle">
+            <img src="assets/logo.svg" alt="DCC-EX Logo" class="kiosk-logo">
+        </a>
+        <div class="kiosk-wordmark">
+            <span class="kw-name">DCC-EX</span>
+            <span class="kw-sub">CONTROL</span>
+        </div>
+
+        <!-- Amps chip -->
+        <div class="kiosk-amps">
+            <mat-icon class="amps-icon">bolt</mat-icon>
+            <span class="amps-val">{{ state.stateController().currentMilliAmps }}</span>
+            <span class="amps-unit">mA</span>
+        </div>
+
+        <span class="spacer"></span>
+
+        <!-- Power -->
+        <button class="kiosk-power" [class.on]="state.status().power" (click)="togglePower()">
+            <mat-icon>power_settings_new</mat-icon>
+            {{ state.status().power ? 'Power Off' : 'Power On' }}
+        </button>
+
+        <!-- Emergency stop (latches red) -->
+        <button class="kiosk-estop" [class.latched]="state.estop()" (click)="emergencyStop()">
+            <mat-icon>stop</mat-icon>
+            Emergency stop
+        </button>
+
+        <!-- Status dots -->
+        <div class="kiosk-dots">
+            <span class="kdot" [class.ok]="state.status().backend" [class.fault]="!state.status().backend"
+                matTooltip="Backend {{ state.status().backend ? 'Connected' : 'Disconnected' }}"></span>
+            <span class="kdot" [class.ok]="state.status().dccex" [class.fault]="!state.status().dccex"
+                matTooltip="DCC-EX {{ state.status().dccex ? 'Connected' : 'Disconnected' }}"></span>
+        </div>
+
+        <button class="kiosk-icon-btn" (click)="toggleTheme()" matTooltip="Toggle Theme">
+            <mat-icon>{{ isDarkTheme() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+        </button>
+
+        <button class="kiosk-icon-btn" [matMenuTriggerFor]="kioskMenu" matTooltip="Menu">
+            <mat-icon>menu</mat-icon>
+        </button>
+        <mat-menu #kioskMenu="matMenu">
+            <a mat-menu-item routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+                <mat-icon>speed</mat-icon> Throttle
+            </a>
+            <a mat-menu-item routerLink="/trains" routerLinkActive="active">
+                <mat-icon>train</mat-icon> Railway
+            </a>
+            <a mat-menu-item routerLink="/schedules" routerLinkActive="active">
+                <mat-icon>schedule</mat-icon> Schedules
+            </a>
+            <a mat-menu-item routerLink="/settings" routerLinkActive="active">
+                <mat-icon>settings</mat-icon> Settings
+            </a>
+        </mat-menu>
+    </div>
+    } @else {
     <mat-toolbar color="primary">
         <div class="toolbar-brand">
             <img src="assets/logo.svg" alt="DCC-EX Logo" class="toolbar-logo">
@@ -62,7 +126,7 @@
     <div class="power-controls-bar">
         <ngx-gauge type="semi" [value]="state.stateController().currentMilliAmps" [size]="100" [min]="0" [max]="state.stateController().currentMaxMilliAmps"
             append="mA" [label]="state.stateController().model"></ngx-gauge>
-        
+
         <button mat-raised-button [color]="state.status().power ? 'warn' : 'primary'" (click)="togglePower()"
             matTooltip="{{ state.status().power ? 'Power On' : 'Power Off' }}">
             <mat-icon>power_settings_new</mat-icon>
@@ -73,6 +137,7 @@
             Emergency Stop
         </button>
     </div>
+    }
 
     <main class="main-content">
         <router-outlet />

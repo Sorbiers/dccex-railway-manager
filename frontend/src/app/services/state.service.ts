@@ -61,6 +61,13 @@ export class StateService {
     private _statePowerMAIN = signal<boolean>(false);
     readonly statePowerMAIN = this._statePowerMAIN.asReadonly();
 
+    // Emergency-stop latch (set on e-stop, cleared by any throttle input)
+    private _estop = signal<boolean>(false);
+    readonly estop = this._estop.asReadonly();
+    setEstop(value: boolean): void {
+        this._estop.set(value);
+    }
+
     // Loco states
     private _stateTrains = signal<{ [key: string]: TrainState }>({});
     readonly stateTrains = this._stateTrains.asReadonly();

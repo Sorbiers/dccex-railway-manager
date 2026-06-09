@@ -1,0 +1,130 @@
+:host {
+    display: block;
+    height: 100%;
+}
+
+.speed-slider {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    height: 100%;
+    user-select: none;
+
+    &.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+}
+
+.step-btn {
+    flex: 0 0 auto;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+
+    &:disabled {
+        opacity: 0.45;
+        cursor: default;
+    }
+
+    mat-icon {
+        font-size: 26px;
+        width: 26px;
+        height: 26px;
+    }
+}
+
+.track-area {
+    position: relative;
+    flex: 1 1 auto;
+    width: 80px;
+    min-height: 0;
+    touch-action: none;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+}
+
+.channel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 62px;
+    border-radius: 31px;
+    background: var(--k-rail);
+    border: 1px solid var(--k-line);
+    overflow: hidden;
+}
+
+.fill {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+}
+
+.ticks {
+    position: absolute;
+    inset: 10px 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: none;
+}
+
+.tick {
+    width: 14px;
+    height: 2px;
+    border-radius: 2px;
+    background: transparent;
+
+    &.on {
+        background: var(--k-line);
+    }
+}
+
+.handle {
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, 50%);
+    z-index: 3;
+    width: 80px;
+    height: 46px;
+    border-radius: 16px;
+    background: var(--k-surf);
+    border: 2.5px solid;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.32);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    pointer-events: none;
+}
+
+.grip {
+    display: flex;
+    gap: 3px;
+
+    i {
+        width: 18px;
+        height: 2.5px;
+        border-radius: 2px;
+        background: var(--k-faint);
+    }
+}
+
+.handle-value {
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1;
+}

@@ -1,0 +1,35 @@
+<div #dial class="gauge" [style.width.px]="size" [style.height.px]="size"
+    (pointerdown)="onPointerDown($event)" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp()"
+    (pointercancel)="onPointerUp()">
+
+    <svg [attr.width]="size" [attr.height]="size">
+        <!-- track -->
+        <path [attr.d]="trackPath" fill="none" class="track" [attr.stroke-width]="strokeW" stroke-linecap="round" />
+
+        <!-- tick marks -->
+        @for (tk of ticks; track $index) {
+        <line [attr.x1]="tk.x1" [attr.y1]="tk.y1" [attr.x2]="tk.x2" [attr.y2]="tk.y2"
+            [style.stroke]="tk.lit ? accent : 'var(--k-faint)'" [attr.stroke-width]="(tk.major ? 2.5 : 1.5) * s"
+            [attr.opacity]="tk.lit ? 1 : 0.5" />
+        }
+
+        <!-- actual-speed fill -->
+        @if (showFill) {
+        <path [attr.d]="fillPath" fill="none" [style.stroke]="accent" [attr.stroke-width]="strokeW"
+            stroke-linecap="round" [style.filter]="'drop-shadow(0 0 8px ' + accent + 'aa)'" />
+        }
+
+        <!-- set marker -->
+        <circle [attr.cx]="marker.x" [attr.cy]="marker.y" [attr.r]="13 * s" class="marker"
+            [style.stroke]="accent" [attr.stroke-width]="4 * s" />
+    </svg>
+
+    <!-- center readout -->
+    <div class="readout">
+        <span class="big" [style.font-size.px]="bigFont" [style.color]="isOn ? null : 'var(--k-faint)'"
+            [style.text-shadow]="isOn ? '0 0 24px ' + accent + '55' : 'none'">{{ round(actual) }}</span>
+        <span class="sub">STEP / {{ max }}</span>
+        <span class="setpill" [style.color]="isOn ? accent : 'var(--k-faint)'"
+            [style.border-color]="isOn ? accent : 'var(--k-line)'">SET {{ set }}</span>
+    </div>
+</div>

@@ -1,0 +1,173 @@
+<div class="kiosk" [style.--accent]="accent()">
+    @if (state.enabledTrains().length === 0 && state.switches().length === 0) {
+    <mat-card class="kiosk-empty">
+        <mat-card-content>
+            <p>No trains enabled. Go to the Trains page to add or enable trains.</p>
+        </mat-card-content>
+    </mat-card>
+    } @else {
+
+    <!-- ── Region 2: Train selector ───────────────────────────────────────── -->
+    <div class="selector">
+        @if (paginateTabs()) {
+        <button class="tab-arrow" (click)="tabPrev()" [disabled]="tabAtStart()">
+            <mat-icon>chevron_left</mat-icon>
+        </button>
+        }
+        <div class="tabs" [class.paginated]="paginateTabs()">
+            @for (tab of visibleTabs(); track tab.key) {
+            @if (tab.type === 'train') {
+            <button class="tab train-tab" [class.on]="!isLayout() && selectedTabIndex() === tab.index"
+                (click)="selectTab(tab.index)">
+                <span class="tab-name">{{ tab.train!.name }}</span>
+                <span class="tab-addr">#{{ tab.train!.address }}</span>
+            </button>
+            } @else {
+            <button class="tab layout-tab" [class.on]="isLayout()" (click)="selectLayout()">
+                <mat-icon>fork_right</mat-icon> Layout
+            </button>
+            }
+            }
+        </div>
+        @if (paginateTabs()) {
+        <button class="tab-arrow" (click)="tabNext()" [disabled]="tabAtEnd()">
+            <mat-icon>chevron_right</mat-icon>
+        </button>
+        }
+    </div>
+
+    <!-- ── Region 3b: Layout view ─────────────────────────────────────────── -->
+    @if (isLayout()) {
+    <div class="layout-view">
+        @for (sw of state.switches(); track sw.id) {
+        <div class="lcard">
+            <div class="lcard-head">
+                <span class="lcard-name">{{ sw.name }}</span>
+                <span class="lcard-addr">addr {{ sw.address }}</span>
+            </div>
+            <div class="lcard-states">
+                @for (def of getTurnoutStateDefs(sw); track $index; let i = $index) {
+                <button class="state-btn" [class.on]="getTurnoutState(sw) === i" (click)="onTurnoutStateClick(sw, i, def)"
+                    [title]="def.label">
+                    <div class="state-icon" [innerHTML]="getSafeHtml(def.svg)"></div>
+                    <span>{{ def.label }}</span>
+                </button>
+                }
+            </div>
+        </div>
+        }
+
+        @for (sig of state.lightSignals(); track sig.id) {
+        <div class="lcard">
+            <div class="lcard-head">
+                <span class="lcard-name">{{ sig.name }}</span>
+                <span class="lcard-addr">signal</span>
+            </div>
+            <div class="lcard-states">
+                @for (aspect of (sig.signalAspects || []); track $index; let i = $index) {
+                <button class="aspect-btn" [class.on]="getSignalState(sig) === i" (click)="onSignalAspectClick(sig, i)"
+                    [title]="aspect.name" [style.border-color]="getSignalState(sig) === i ? getAspectColor(aspect.name) : null">
+                    <span class="lamp" [style.background]="getAspectColor(aspect.name)"
+                        [style.opacity]="getSignalState(sig) === i ? 1 : 0.3"
+                        [style.box-shadow]="getSignalState(sig) === i ? '0 0 12px ' + getAspectColor(aspect.name) : 'none'"></span>
+                    <span>{{ aspect.name }}</span>
+                </button>
+                }
+                <button class="aspect-btn" [class.on]="getSignalState(sig) === -1" (click)="onSignalAspectClick(sig, -1)"
+                    title="All Off">
+                    <span class="lamp off"></span>
+                    <span>Off</span>
+                </button>
+            </div>
+        </div>
+        }
+    </div>
+    }
+
+    <!-- ── Region 3a: Throttle view ───────────────────────────────────────── -->
+    @else if (currentTrain()) {
+    @if (currentTrain(); as train) {
+    <div class="body">
+
+        <!-- Left: speed card -->
+        <div class="card speed-card">
+            <span class="card-label">SPEED</span>
+            <app-speed-slider [value]="train.speed || 0" [min]="0" [max]="126" [accent]="accent()"
+                (valueChange)="setTrainSpeed(train, $event)"></app-speed-slider>
+        </div>
+
+        <!-- Center: gauge + direction + stop/reset -->
+        <div class="center-col">
+            <div class="card gauge-card">
+                <app-speed-gauge [set]="train.speed || 0" [actual]="actualSpeed(train)" [max]="126" [accent]="accent()"
+                    [isOn]="isOn()" [size]="188" (speedChange)="setTrainSpeed(train, $event)"></app-speed-gauge>
+                <span class="dir-word" [class.off]="!isOn()">
+                    {{ isOn() ? (dirFwd(train) ? 'FORWARD' : 'REVERSE') : 'TRACK OFF' }}
+                </span>
+                <div class="motion-rail" [class.dim]="!isOn()" [style.animation-duration]="railDuration(train)"
+                    [style.animation-play-state]="railPaused(train) ? 'paused' : 'running'"
+                    [style.animation-direction]="dirFwd(train) ? 'reverse' : 'normal'"></div>
+            </div>
+
+            <div class="dir-buttons">
+                <button class="dir-btn" [class.on]="!dirFwd(train)" (click)="onDirectionChange(train, 'reverse')">
+                    <mat-icon>arrow_back</mat-icon> Rev
+                </button>
+                <button class="dir-btn" [class.on]="dirFwd(train)" (click)="onDirectionChange(train, 'forward')">
+                    Fwd <mat-icon>arrow_forward</mat-icon>
+                </button>
+            </div>
+
+            <div class="stop-buttons">
+                <button class="big-btn stop" (click)="stopTrain(train)">
+                    <mat-icon>stop</mat-icon> Stop
+                </button>
+                <button class="big-btn reset" (click)="resetTrain(train)">
+                    <mat-icon>restart_alt</mat-icon> Reset
+                </button>
+            </div>
+        </div>
+
+        <!-- Right: functions -->
+        <div class="card functions-card">
+            <div class="fn-groups">
+                @for (g of availableGroups(train); track g) {
+                <button class="fn-group" [class.on]="currentGroup(train) === g" (click)="setGroup(g)">
+                    <mat-icon>{{ groupMeta[g].icon }}</mat-icon>
+                    <!-- {{ groupMeta[g].label }} -->
+                </button>
+                }
+            </div>
+
+            <div class="fn-grid">
+                @for (fn of functionSlice(train); track fn.id) {
+                <button class="fn-tile" [class.on]="isFunctionActive(train, fn.id)"
+                    (pointerdown)="onFunctionPress(train, fn)" (pointerup)="onFunctionRelease(train, fn)"
+                    (pointerleave)="onFunctionRelease(train, fn)">
+                    <mat-icon>{{ fn.icon || 'radio_button_unchecked' }}</mat-icon>
+                    <span class="fn-name">{{ fn.name }}</span>
+                    @if (fn.momentary) {
+                    <span class="fn-hold">HOLD</span>
+                    }
+                </button>
+                }
+            </div>
+
+            @if (functionPagesCount(train) > 1) {
+            <div class="fn-pager">
+                <button class="pager-btn" (click)="prevFnPage(train)" [disabled]="clampedFnPage(train) === 0">
+                    <mat-icon>chevron_left</mat-icon>
+                </button>
+                <span class="pager-label">{{ clampedFnPage(train) + 1 }} / {{ functionPagesCount(train) }}</span>
+                <button class="pager-btn" (click)="nextFnPage(train)"
+                    [disabled]="clampedFnPage(train) === functionPagesCount(train) - 1">
+                    <mat-icon>chevron_right</mat-icon>
+                </button>
+            </div>
+            }
+        </div>
+    </div>
+    }
+    }
+    }
+</div>
