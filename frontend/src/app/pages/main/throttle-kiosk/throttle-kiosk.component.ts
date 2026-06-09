@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { SpeedGaugeComponent } from '../../../components/speed-gauge/speed-gauge.component';
 import { SpeedSliderComponent } from '../../../components/speed-slider/speed-slider.component';
 import { DccFunction, Device } from '../../../models';
 import { ThrottleControllerBase } from '../throttle-base';
+import { IdleService } from '../../../services/idle.service';
 
 interface KioskTab {
     type: 'train' | 'layout';
@@ -178,8 +179,11 @@ export class ThrottleKioskComponent extends ThrottleControllerBase {
 
     // ── Motion rail (decorative) ─────────────────────────────────────────────
 
+    private idle = inject(IdleService);
+
     railPaused(train: Device): boolean {
-        return !this.isOn() || this.actualSpeed(train) <= 0.5;
+        // Also pause while the screen is blanked — no point animating in the dark.
+        return this.idle.blanked() || !this.isOn() || this.actualSpeed(train) <= 0.5;
     }
 
     railDuration(train: Device): string {

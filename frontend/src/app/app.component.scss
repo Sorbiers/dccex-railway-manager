@@ -225,6 +225,14 @@ nav a.active {
   }
 }
 
+.screen-blank-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #000;
+  // Black cover that catches the wake tap while the backlight is off.
+}
+
 .kiosk-icon-btn {
   width: 42px;
   height: 42px;

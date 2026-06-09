@@ -10,6 +10,7 @@ import schedulesRouter from './routes/schedules';
 import settingsRouter from './routes/settings';
 import dccRouter from './routes/dcc';
 import statusRouter from './routes/status';
+import displayRouter from './routes/display';
 import { dccService } from './services/dcc.service';
 import { getSettings } from './services/data.service';
 
@@ -26,6 +27,7 @@ app.use('/api/schedules', schedulesRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/dcc', dccRouter);
 app.use('/api/status', statusRouter);
+app.use('/api/display', displayRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {
