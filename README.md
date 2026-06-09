@@ -138,9 +138,23 @@ select the panel; default is the DSI panel `…/10-0045`.)
 > means under-voltage/throttling — use a true 5 V/3 A USB-C supply and a thick
 > cable; software tuning can't compensate for a weak power bank.
 >
-> **Boot note:** after the above, boot is dominated by WiFi association
-> (NetworkManager ~14 s on this hardware). VNC (`wayvnc`) also sits on the boot
-> path — `sudo systemctl disable --now wayvnc wayvnc-control` if you don't use it.
+> **Boot note (WiFi-gated login):** after the above, boot is dominated by WiFi
+> bring-up. On this hardware NetworkManager takes ~14 s, almost all of it a WiFi
+> driver/firmware *pre-association* stall (the association + DHCP itself is ~1 s) —
+> this is firmware-level, not a config knob. The Angular UI is served from
+> localhost and the backend is decoupled from the network, so **the backend is
+> ready ~7 s into boot**, but the **graphical login still appears ~23 s** in:
+> `lightdm` waits on `systemd-user-sessions.service`, whose vendor unit is ordered
+> `After=network.target` (→ NetworkManager). That ordering is re-imposed by reverse
+> dependencies and does **not** clear via a simple drop-in, so it's left as-is.
+>
+> `wayvnc` (VNC) is **disabled** on this deployment
+> (`sudo systemctl disable --now wayvnc wayvnc-control`); re-enable if you want
+> remote screen access. Disabling it frees a background service but does **not**
+> speed boot-to-screen, since the login is gated by `network.target` regardless.
+> To get the screen up before WiFi you'd have to tackle the WiFi driver/firmware
+> stall itself — best done with physical access so a bad WiFi change can't lock
+> you out remotely.
 
 ### 4. Updating the app
 
