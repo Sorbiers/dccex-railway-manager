@@ -41,11 +41,23 @@ export class IdleService {
             else if (!kiosk && this.started) this.stop();
         });
 
-        // Re-arm with the new window when track power changes.
+        // Re-arm when track power changes or the "Disable screen off" setting toggles.
         effect(() => {
             this.state.statePowerMAIN();
-            if (this.started && !this._blanked()) this.resetTimer();
+            const disabled = this.blankingDisabled();
+            if (!this.started) return;
+            if (disabled) {
+                if (this.timer) { clearTimeout(this.timer); this.timer = null; }
+                if (this._blanked()) this.wake();
+            } else if (!this._blanked()) {
+                this.resetTimer();
+            }
         });
+    }
+
+    /** "Disable screen off" setting — when true, never auto-blank. */
+    private blankingDisabled(): boolean {
+        return !!this.state.settings()?.ui?.disableScreenOff;
     }
 
     private start(): void {
@@ -79,6 +91,8 @@ export class IdleService {
 
     private resetTimer(): void {
         if (this.timer) clearTimeout(this.timer);
+        this.timer = null;
+        if (!this.started || this.blankingDisabled()) return;
         this.timer = setTimeout(() => this.zone.run(() => this.blank()), this.timeoutMs());
     }
 

@@ -58,33 +58,115 @@ docker compose down -v      # also remove the data volume (wipes saved devices/s
 
 > **Reaching the command station:** the container talks to your DCC-EX station over its network address (set in Settings). The default bridge network reaches LAN devices via NAT. If your station is only reachable on the host LAN segment and the bridge can't see it, uncomment `network_mode: host` in `docker-compose.yml` (Linux only).
 
-## Native (no-Docker) deployment — Raspberry Pi kiosk
+## Installation on Raspberry Pi 4 with DSI screen (kiosk)
 
-For a battery-powered Raspberry Pi kiosk, running natively instead of in Docker
-removes the docker/containerd boot cost (~15–20 s) and a background daemon, which
-helps boot time and idle power. With Node.js 20+ installed:
+The intended deployment is a Raspberry Pi 4 driving an **800×480 DSI touch panel**
+in fullscreen kiosk mode, often on a battery/power bank. For that target, run the
+app **natively** (not in Docker): it removes the docker/containerd boot cost
+(~15–20 s) and a background daemon, lowering boot time and idle power.
+
+> Verified on a Pi 4B (2 GB) / Raspberry Pi OS (Debian 13, Wayland + labwc):
+> boot ≈ **28 s**, free RAM ≈ **730 MB**, with the backend ready ~7 s into boot.
+
+### 1. Install the app as a service
+
+Requires **Node.js 20+**. If it isn't installed, the simplest reliable way on a
+64-bit Pi is the official tarball:
 
 ```bash
-./deploy/install-native.sh
+VER=v20.18.1
+curl -fsSL https://nodejs.org/dist/$VER/node-$VER-linux-arm64.tar.xz -o /tmp/node.tar.xz
+sudo tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
+sudo ln -sf /usr/local/bin/node /usr/bin/node && sudo ln -sf /usr/local/bin/npm /usr/bin/npm
 ```
 
-This builds the frontend + backend, serves the Angular build as static files from
-the backend, and installs a `dccex.service` systemd unit (see `deploy/dccex.service`)
-that runs the app on port 3000 at boot as the current user.
+Then, from a clone of this repo:
 
-- The service user must be in the `video` group so the app can write the panel
-  backlight for idle screen blanking (`BACKLIGHT_PATH` / `BACKLIGHT_MAX` in the unit).
-- Migrating from Docker: copy the JSON out of the volume into `backend/dist/data/`
-  before first start, then `docker compose down` and disable Docker:
-  ```bash
-  sudo cp /var/lib/docker/volumes/dccex-railway-manager_dccex-data/_data/*.json backend/dist/data/
-  docker compose down && sudo systemctl disable --now docker.socket docker.service containerd
-  ```
+```bash
+git clone https://github.com/Sorbiers/dccex-railway-manager.git
+cd dccex-railway-manager
+./deploy/install-native.sh        # builds FE+BE, installs & starts dccex.service
+```
+
+`install-native.sh` builds the frontend + backend, publishes the Angular build to
+`backend/dist/public`, and installs the **`dccex.service`** systemd unit
+([deploy/dccex.service](deploy/dccex.service)) that serves the app on port 3000 at
+boot as the current user. Open `http://localhost:3000` and set your command-station
+host/port on the Settings page.
+
+- The service user **must be in the `video` group** (`sudo usermod -aG video $USER`)
+  so the app can write the panel backlight for idle screen blanking.
+- The unit uses `Restart=always` (survives crashes) and does **not** wait for the
+  network — the UI is served from localhost, and the backend retries its DCC-EX
+  connection until WiFi is up, so the screen comes up without waiting for WiFi.
+
+### 2. Kiosk browser
+
+Raspberry Pi OS (labwc/Wayland) launches Chromium fullscreen from
+`~/.config/labwc/autostart`:
+
+```sh
+# Wait for the backend, then launch the kiosk
+for i in $(seq 1 60); do curl -sf http://localhost:3000/api/health >/dev/null 2>&1 && break; sleep 1; done
+/usr/bin/lwrespawn /usr/bin/chromium --kiosk --ozone-platform=wayland \
+  --password-store=basic --noerrdialogs --disable-infobars \
+  --disable-session-crashed-bubble http://localhost:3000 &
+```
+
+### 3. Performance / power tuning (recommended)
+
+```bash
+# Drop boot cruft not needed on a kiosk (~tens of seconds + RAM):
+sudo systemctl disable --now NetworkManager-wait-online.service \
+  bluetooth.service cups.service cups.socket cups.path \
+  avahi-daemon.service avahi-daemon.socket rpcbind.service rpcbind.socket nfs-blkmap.service
+sudo touch /etc/cloud/cloud-init.disabled   # if cloud-init is present
+
+# Slim the desktop: stop the taskbar/desktop (Chromium --kiosk covers them).
+# Comment out the wf-panel-pi and pcmanfm-pi lines in /etc/xdg/labwc/autostart.
+```
+
+In `/boot/firmware/config.txt` (applies on reboot): `dtoverlay=disable-bt` and
+`dtparam=act_led_trigger=none,pwr_led_trigger=none` (and their `*_activelow=off`).
+
+**Idle screen blanking** is built in: after **30 min** (track power on) / **5 min**
+(off) the backlight turns off; any touch wakes it. Toggle **Settings → Disable
+screen off** to keep it always on. (`BACKLIGHT_PATH` / `BACKLIGHT_MAX` in the unit
+select the panel; default is the DSI panel `…/10-0045`.)
+
+> **Power supply:** check `vcgencmd get_throttled` reads `0x0`. A non-zero value
+> means under-voltage/throttling — use a true 5 V/3 A USB-C supply and a thick
+> cable; software tuning can't compensate for a weak power bank.
+>
+> **Boot note:** after the above, boot is dominated by WiFi association
+> (NetworkManager ~14 s on this hardware). VNC (`wayvnc`) also sits on the boot
+> path — `sudo systemctl disable --now wayvnc wayvnc-control` if you don't use it.
+
+### 4. Updating the app
+
+```bash
+cd ~/dccex-railway-manager
+git pull
+cd frontend && npm install && npm run build && cd ..
+cd backend  && npm install && npm run build && cd ..
+rm -rf backend/dist/public && cp -r frontend/dist/dccex-frontend/browser backend/dist/public
+sudo systemctl restart dccex.service
+```
+
+(Equivalently, re-run `./deploy/install-native.sh`.) Manage the service with:
 
 ```bash
 sudo systemctl status dccex.service     # check
 sudo systemctl restart dccex.service    # after a rebuild
 journalctl -u dccex.service -f          # follow logs
+```
+
+### Migrating from a previous Docker install
+
+```bash
+sudo cp /var/lib/docker/volumes/dccex-railway-manager_dccex-data/_data/*.json backend/dist/data/
+docker compose down
+sudo systemctl disable --now docker.socket docker.service containerd
 ```
 
 ## Getting started (development)

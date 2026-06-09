@@ -116,6 +116,11 @@ import { Settings } from '../../models';
           <mat-slide-toggle [(ngModel)]="settings.ui.showAdvancedControls" color="primary">
             Show advanced controls
           </mat-slide-toggle>
+
+          <mat-slide-toggle [(ngModel)]="settings.ui.disableScreenOff" color="primary" class="toggle-row">
+            Disable screen off
+            <span class="toggle-hint">Keep the kiosk screen on (no idle auto-blank)</span>
+          </mat-slide-toggle>
         </mat-card-content>
       </mat-card>
 
@@ -207,6 +212,18 @@ import { Settings } from '../../models';
       gap: 8px;
       margin-top: 24px;
     }
+
+    .toggle-row {
+      display: block;
+      margin-top: 16px;
+    }
+
+    .toggle-hint {
+      display: block;
+      font-size: 12px;
+      opacity: 0.7;
+      margin-left: 52px;
+    }
   `]
 })
 export class SettingsComponent implements OnInit {
@@ -217,7 +234,7 @@ export class SettingsComponent implements OnInit {
   settings: Settings = {
     backend: { host: window.location.hostname, port: 3000 },
     dccex: { host: '192.168.4.1', port: 2560, autoConnect: true },
-    ui: { theme: 'system', showAdvancedControls: false }
+    ui: { theme: 'system', showAdvancedControls: false, disableScreenOff: false }
   };
 
   ngOnInit(): void {
@@ -244,7 +261,7 @@ export class SettingsComponent implements OnInit {
     this.settings = {
       backend: { host: window.location.hostname, port: 3000 },
       dccex: { host: '192.168.4.1', port: 2560, autoConnect: true },
-      ui: { theme: 'system', showAdvancedControls: false }
+      ui: { theme: 'system', showAdvancedControls: false, disableScreenOff: false }
     };
   }
 

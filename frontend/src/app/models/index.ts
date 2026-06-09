@@ -75,6 +75,8 @@ export interface Settings {
   ui: {
     theme: 'light' | 'dark' | 'system';
     showAdvancedControls: boolean;
+    /** Kiosk: when true, never auto-blank the screen on idle. */
+    disableScreenOff?: boolean;
   };
 }
 

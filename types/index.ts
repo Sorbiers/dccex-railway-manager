@@ -54,6 +54,7 @@ export interface Settings {
   ui: {
     theme: 'light' | 'dark' | 'system';
     showAdvancedControls: boolean;
+    disableScreenOff?: boolean;
   };
 }
 
