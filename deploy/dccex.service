@@ -1,0 +1,22 @@
+[Unit]
+Description=DCC-EX Railway Manager (native, no Docker)
+Documentation=https://github.com/Sorbiers/dccex-railway-manager
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Run as the kiosk user; must be in the 'video' group to write the backlight.
+User=main
+WorkingDirectory=/home/main/dccex-railway-manager/backend
+Environment=NODE_ENV=production
+Environment=PORT=3000
+# Kiosk display backlight control (idle power saving). Adjust per panel.
+Environment=BACKLIGHT_PATH=/sys/class/backlight/10-0045/brightness
+Environment=BACKLIGHT_MAX=255
+ExecStart=/usr/bin/node dist/server.js
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
