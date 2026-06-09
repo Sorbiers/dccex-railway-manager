@@ -85,7 +85,8 @@ export class StateService {
                 this.initSystem(settings);
             }
         });
-        setInterval(() => this.getStatus(), 5000);
+        // Poll every 20s (was 5s) to cut idle CPU/radio wakeups on the Pi battery.
+        setInterval(() => this.getStatus(), 20000);
     }
 
     restoreSettings() {

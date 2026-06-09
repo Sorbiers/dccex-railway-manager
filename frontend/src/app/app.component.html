@@ -142,4 +142,8 @@
     <main class="main-content">
         <router-outlet />
     </main>
+
+    @if (layout.kiosk() && idle.blanked()) {
+    <div class="screen-blank-overlay" (pointerdown)="onWake($event)" (touchstart)="onWake($event)"></div>
+    }
 </div>

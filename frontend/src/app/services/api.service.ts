@@ -83,6 +83,12 @@ export class ApiService {
             .pipe(map(res => res.data || null));
     }
 
+    // Display backlight (kiosk power saving)
+    setBacklight(on: boolean): Observable<boolean> {
+        return this.http.post<ApiResponse<unknown>>(`${this.baseUrl}/display`, { on })
+            .pipe(map(res => res.success));
+    }
+
     // DCC Commands
     sendCommand(command: DccCommand): Observable<boolean> {
         return this.http.post<ApiResponse<void>>(`${this.baseUrl}/dcc/command`, command)
