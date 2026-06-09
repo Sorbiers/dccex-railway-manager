@@ -58,6 +58,35 @@ docker compose down -v      # also remove the data volume (wipes saved devices/s
 
 > **Reaching the command station:** the container talks to your DCC-EX station over its network address (set in Settings). The default bridge network reaches LAN devices via NAT. If your station is only reachable on the host LAN segment and the bridge can't see it, uncomment `network_mode: host` in `docker-compose.yml` (Linux only).
 
+## Native (no-Docker) deployment — Raspberry Pi kiosk
+
+For a battery-powered Raspberry Pi kiosk, running natively instead of in Docker
+removes the docker/containerd boot cost (~15–20 s) and a background daemon, which
+helps boot time and idle power. With Node.js 20+ installed:
+
+```bash
+./deploy/install-native.sh
+```
+
+This builds the frontend + backend, serves the Angular build as static files from
+the backend, and installs a `dccex.service` systemd unit (see `deploy/dccex.service`)
+that runs the app on port 3000 at boot as the current user.
+
+- The service user must be in the `video` group so the app can write the panel
+  backlight for idle screen blanking (`BACKLIGHT_PATH` / `BACKLIGHT_MAX` in the unit).
+- Migrating from Docker: copy the JSON out of the volume into `backend/dist/data/`
+  before first start, then `docker compose down` and disable Docker:
+  ```bash
+  sudo cp /var/lib/docker/volumes/dccex-railway-manager_dccex-data/_data/*.json backend/dist/data/
+  docker compose down && sudo systemctl disable --now docker.socket docker.service containerd
+  ```
+
+```bash
+sudo systemctl status dccex.service     # check
+sudo systemctl restart dccex.service    # after a rebuild
+journalctl -u dccex.service -f          # follow logs
+```
+
 ## Getting started (development)
 
 Run the backend and frontend in two terminals.
