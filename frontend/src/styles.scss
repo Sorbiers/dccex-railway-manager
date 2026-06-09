@@ -94,6 +94,58 @@ body {
   box-sizing: border-box;
 }
 
+// In kiosk mode the throttle page fills the remaining space with no page
+// scrolling; the kiosk component manages its own internal layout/overflow.
+.app-container.kiosk .main-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  max-width: none;
+  overflow: hidden;
+}
+
+// ── Kiosk design tokens (Variant A "Refined Material") ────────────────────────
+// Defined on the kiosk container so both the top bar (app.component) and the
+// routed kiosk throttle component inherit them. Dark overrides follow.
+.app-container.kiosk {
+  --k-bg: #eef1f5;
+  --k-surf: #ffffff;
+  --k-surf2: #f1f4f8;
+  --k-surf3: #e6eaf0;
+  --k-line: rgba(15, 23, 42, .10);
+  --k-line2: rgba(15, 23, 42, .05);
+  --k-text: #161a20;
+  --k-dim: #5b626c;
+  --k-faint: #8b919b;
+  --k-rail: rgba(15, 23, 42, .07);
+
+  // Semantic
+  --k-power-on: #2e7d32;
+  --k-danger: #b3261e;
+  --k-ok: #37b34a;
+  --k-fault: #e5393b;
+  --k-amber: #f6c000;
+  --k-amps: #f6a609;
+
+  // Fallback accent (per-loco accent is set inline on the kiosk body)
+  --accent: #1976d2;
+
+  background: var(--k-bg);
+}
+
+.app-container.kiosk.dark-theme {
+  --k-bg: #101216;
+  --k-surf: #191c21;
+  --k-surf2: #22262c;
+  --k-surf3: #2c313a;
+  --k-line: rgba(255, 255, 255, .10);
+  --k-line2: rgba(255, 255, 255, .06);
+  --k-text: #e7eaef;
+  --k-dim: #9aa1ab;
+  --k-faint: #6b727c;
+  --k-rail: rgba(255, 255, 255, .07);
+}
+
 // Status indicators
 .status-indicator {
   width: 12px;

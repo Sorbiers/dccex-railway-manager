@@ -8,6 +8,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { StateService } from './services/state.service';
 import { DccService } from './services/dcc.service';
+import { LayoutService } from './services/layout.service';
 import { NgxGaugeModule } from 'ngx-gauge';
 
 @Component({
@@ -29,6 +30,7 @@ import { NgxGaugeModule } from 'ngx-gauge';
 })
 export class AppComponent {
   state = inject(StateService);
+  layout = inject(LayoutService);
   private dcc = inject(DccService);
   private platformId = inject(PLATFORM_ID);
   private renderer = inject(Renderer2);

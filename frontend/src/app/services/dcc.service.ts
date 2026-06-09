@@ -11,6 +11,9 @@ export class DccService {
   private state = inject(StateService);
 
   setThrottle(address: number, speed: number): void {
+    // Any throttle input clears a latched emergency stop.
+    this.state.setEstop(false);
+
     const command: DccCommand = {
       type: 'throttle',
       address,
@@ -100,6 +103,8 @@ export class DccService {
   }
 
   emergencyStop(): void {
+    this.state.setEstop(true);
+
     const command: DccCommand = {
       type: 'emergency'
     };
