@@ -60,6 +60,8 @@ docker compose down -v      # also remove the data volume (wipes saved devices/s
 
 ## Installation on Raspberry Pi 4 with DSI screen (kiosk)
 
+![picture](doc/screen.png)
+
 The intended deployment is a Raspberry Pi 4 driving an **800×480 DSI touch panel**
 in fullscreen kiosk mode, often on a battery/power bank. For that target, run the
 app **natively** (not in Docker): it removes the docker/containerd boot cost
