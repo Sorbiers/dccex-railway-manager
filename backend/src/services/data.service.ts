@@ -87,6 +87,19 @@ function writeJsonFile<T>(filename: string, data: T): void {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
 }
 
+// Generic state files (e.g. scheduler fired-guard) stored beside the data files.
+export function readDataFile<T>(filename: string, fallback: T): T {
+  try {
+    return readJsonFile<T>(filename);
+  } catch {
+    return fallback;
+  }
+}
+
+export function writeDataFile<T>(filename: string, data: T): void {
+  writeJsonFile(filename, data);
+}
+
 export interface SignalAspect {
   name: string;
   vgpioAddress: number;
@@ -122,14 +135,17 @@ export interface DccFunction {
 
 export interface ScheduleItem {
   id: string;
-  time: string;
+  /** Offset from the schedule start time, "HH:MM:SS". */
+  offset: string;
   deviceId: string;
-  action: 'start' | 'stop' | 'speed' | 'function';
+  action: 'start' | 'stop' | 'speed' | 'function' | 'reset';
   params?: {
     speed?: number;
     direction?: 'forward' | 'reverse';
     functionId?: number;
     functionState?: boolean;
+    momentary?: boolean;
+    duration?: number;
   };
 }
 
@@ -137,8 +153,12 @@ export interface WeeklySchedule {
   id: string;
   name: string;
   enabled: boolean;
+  /** Wall-clock time the program starts, "HH:MM:SS". Item offsets are relative to this. */
+  startTime: string;
   days: ('mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun')[];
   items: ScheduleItem[];
+  /** When true, all devices used by the program are reset after the last item. */
+  resetAtEnd?: boolean;
 }
 
 export interface Settings {
@@ -196,8 +216,54 @@ export function deleteDevice(id: string): boolean {
 }
 
 // Schedules
+
+function timeToSeconds(t: string): number {
+  const [h = 0, m = 0, s = 0] = t.split(':').map(Number);
+  return h * 3600 + m * 60 + s;
+}
+
+function secondsToTime(total: number): string {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${pad(Math.floor(total / 3600))}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
+}
+
+// Legacy schedules stored an absolute wall-clock `time` per item and no
+// startTime. Convert on read: startTime = earliest item time, each item gets
+// an `offset` relative to it. Persist the converted form once.
+function migrateSchedules(schedules: any[]): { schedules: WeeklySchedule[]; changed: boolean } {
+  let changed = false;
+  const migrated = schedules.map(schedule => {
+    if (schedule.startTime && schedule.items.every((i: any) => i.offset !== undefined)) {
+      return schedule as WeeklySchedule;
+    }
+    changed = true;
+    const itemTimes = schedule.items.map((i: any) => timeToSeconds(i.offset ?? i.time ?? '00:00:00'));
+    const startSeconds = schedule.startTime
+      ? timeToSeconds(schedule.startTime)
+      : (itemTimes.length ? Math.min(...itemTimes) : 0);
+    return {
+      ...schedule,
+      startTime: schedule.startTime || secondsToTime(startSeconds),
+      items: schedule.items.map((item: any, idx: number) => {
+        const { time, ...rest } = item;
+        return {
+          ...rest,
+          offset: item.offset ?? secondsToTime(Math.max(itemTimes[idx] - startSeconds, 0))
+        };
+      })
+    } as WeeklySchedule;
+  });
+  return { schedules: migrated, changed };
+}
+
 export function getSchedules(): WeeklySchedule[] {
-  return readJsonFile<WeeklySchedule[]>('schedules.json');
+  const raw = readJsonFile<any[]>('schedules.json');
+  const { schedules, changed } = migrateSchedules(raw);
+  if (changed) {
+    writeJsonFile('schedules.json', schedules);
+    console.log('Migrated schedules to startTime + relative offsets');
+  }
+  return schedules;
 }
 
 export function getSchedule(id: string): WeeklySchedule | undefined {

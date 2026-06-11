@@ -12,6 +12,7 @@ import dccRouter from './routes/dcc';
 import statusRouter from './routes/status';
 import displayRouter from './routes/display';
 import { dccService } from './services/dcc.service';
+import { scheduleService } from './services/schedule.service';
 import { getSettings } from './services/data.service';
 
 const app = express();
@@ -109,10 +110,18 @@ dccService.on('power', (power) => {
   broadcast({ type: 'power', data: power });
 });
 
+// Schedule run progress to WebSocket broadcasts
+scheduleService.on('run-update', (status) => {
+  broadcast({ type: 'schedule-run', data: status });
+});
+
 // Start server
 server.listen(PORT, () => {
   console.log(`DCC-EX Backend server running on port ${PORT}`);
   console.log(`WebSocket server running on ws://localhost:${PORT}/ws`);
+
+  // Fire enabled schedules automatically at startTime on their active days
+  scheduleService.startScheduler();
 
   // Auto-connect to DCC-EX if configured
   const settings = getSettings();

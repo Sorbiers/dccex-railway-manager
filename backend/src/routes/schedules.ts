@@ -34,6 +34,8 @@ router.post('/', (req: Request, res: Response) => {
       id: `schedule-${uuidv4().substring(0, 8)}`,
       name: req.body.name,
       enabled: req.body.enabled ?? true,
+      startTime: req.body.startTime || '08:00:00',
+      resetAtEnd: req.body.resetAtEnd ?? false,
       days: req.body.days || [],
       items: (req.body.items || []).map((item: any) => ({
         ...item,

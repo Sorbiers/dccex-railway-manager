@@ -69,7 +69,22 @@ router.delete('/:id', (req: Request, res: Response) => {
     if (!deleted) {
       return res.status(404).json({ success: false, error: 'Device not found' });
     }
-    res.json({ success: true });
+
+    // Integrity: drop schedule actions that referenced the deleted device so
+    // programs don't carry dangling deviceIds.
+    let purgedItems = 0;
+    for (const schedule of dataService.getSchedules()) {
+      const remaining = schedule.items.filter(item => item.deviceId !== req.params.id);
+      if (remaining.length !== schedule.items.length) {
+        purgedItems += schedule.items.length - remaining.length;
+        dataService.updateSchedule(schedule.id, { items: remaining });
+      }
+    }
+    if (purgedItems > 0) {
+      console.log(`Removed ${purgedItems} schedule action(s) referencing deleted device ${req.params.id}`);
+    }
+
+    res.json({ success: true, data: { purgedScheduleItems: purgedItems } });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Failed to delete device' });
   }
