@@ -2,7 +2,6 @@ import { Injectable, inject, signal, computed, effect } from '@angular/core';
 import { Device, WeeklySchedule, Settings, ConnectionStatus, ScheduleRunStatus } from '../models';
 import { ApiService } from './api.service';
 import { APP_CONFIG, BACKEND_CONNECTION, persistBackendConnection } from './app-config';
-import { Observable, tap } from 'rxjs';
 
 
 interface TrainState {
@@ -101,49 +100,60 @@ export class StateService {
     restoreSettings() {
         // The back-end host/port were resolved before bootstrap via the lookup
         // sequence (session storage -> local storage -> appconfig.json -> URL
-        // -> defaults). Everything else is loaded from the back-end below.
-        const _settings: Settings = this._settings() ||
-        {
+        // -> defaults). We seed a minimal settings object using that resolved
+        // connection so the effect below can start the WebSocket immediately;
+        // every other param is (re)loaded from the back-end on connection.
+        this.api.setBaseUrl(`http://${this.backend.host}:${this.backend.port}/api`);
+
+        this._settings.set(this._settings() || {
             backend: { host: this.backend.host, port: this.backend.port },
             dccex: { host: '192.168.4.1', port: 2560, autoConnect: true },
             ui: { theme: 'system', showAdvancedControls: false }
-        };
+        });
+    }
 
-        this.api.setBaseUrl(`http://${this.backend.host}:${this.backend.port}/api`);
+    initSystem(settings: Settings): void {
+        // The resolved connection is the source of truth for where the back-end
+        // is; the WebSocket drives connectivity (with its own retry loop) and we
+        // load all back-end data each time it (re)connects.
+        this.api.setBaseUrl(`http://${settings.backend.host}:${settings.backend.port}/api`);
+        this.initWebSocket();
+    }
+
+    /**
+     * (Re)load everything the back-end owns. Called on every (re)connection so
+     * the UI recovers after the back-end starts late or restarts. The resolved
+     * connection always wins over whatever host/port the back-end reports.
+     */
+    private loadFromBackend(): void {
+        this._loading.set(true);
 
         this.api.getSettings().subscribe({
             next: (settings) => {
                 if (settings) {
-                    // Keep the resolved connection as the source of truth; all
-                    // other params come from the back-end.
                     settings.backend = { host: this.backend.host, port: this.backend.port };
                     this._settings.set(settings);
-                } else {
-                    this._settings.set(_settings);
                 }
             },
-            error: (err) => {
-                console.error('Failed to load settings', err);
-                // Still surface the resolved connection so the WebSocket
-                // reconnect loop can keep trying to reach the back-end.
-                this._settings.set(_settings);
-            }
+            error: (err) => console.error('Failed to load settings', err)
         });
 
-    }
+        this.api.getDevices().subscribe({
+            next: (devices) => this._devices.set(devices),
+            error: (err) => console.error('Failed to load devices', err)
+        });
 
-    initSystem(settings: Settings): void {
-        this.api.setBaseUrl(`http://${settings.backend.host}:${settings.backend.port}/api`);
-        this.loadInitialData().subscribe({
+        this.api.getSchedules().subscribe({
+            next: (schedules) => this._schedules.set(schedules),
+            error: (err) => console.error('Failed to load schedules', err)
+        });
+
+        this.api.getStatus().subscribe({
             next: (status) => {
-                if (status) this._status.set(status);
-                this.initWebSocket();
+                if (status) this._status.set({ ...status, backend: true });
+                this._loading.set(false);
             },
-            error: (err) => {
-                console.error('Failed to load status', err);
-                this._status.set({ backend: false, dccex: false, power: false });
-
-            }
+            error: () => this._loading.set(false)
         });
     }
 
@@ -163,15 +173,27 @@ export class StateService {
     initWebSocket(): void {
         const settings = this.settings();
         if (!settings) return;
+
+        // Don't open a second socket if one is already connecting/open. initSystem
+        // can fire repeatedly (the settings effect re-runs whenever back-end data
+        // loads); without this guard each run would spawn a parallel socket and a
+        // parallel reconnect loop.
+        if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+            return;
+        }
+
         try {
-            this.ws = new WebSocket(`ws://${settings.backend.host}:${settings.backend.port}/ws`);
+            const url = `ws://${settings.backend.host}:${settings.backend.port}/ws`;
+            this.ws = new WebSocket(url);
 
             this.ws.onopen = () => {
-                console.log('WebSocket connected');
+                console.log('WebSocket connected to', url);
                 this._status.update(s => ({ ...s, backend: true }));
                 // Cache the working connection so future loads find it first
                 // (steps 1 & 2 of the lookup), respecting the appconfig flags.
                 persistBackendConnection(this.backend, this.appConfig);
+                // Connection (re)established — load everything from the back-end.
+                this.loadFromBackend();
             };
 
             this.ws.onmessage = (event) => {
@@ -319,31 +341,6 @@ export class StateService {
                 break;
 
         }
-    }
-
-    private loadInitialData(): Observable<ConnectionStatus | null> {
-        this._loading.set(true);
-
-        this.api.getDevices().subscribe({
-            next: (devices) => this._devices.set(devices),
-            error: (err) => console.error('Failed to load devices', err)
-        });
-
-        this.api.getSchedules().subscribe({
-            next: (schedules) => this._schedules.set(schedules),
-            error: (err) => console.error('Failed to load schedules', err)
-        });
-
-        // this.api.getSettings().subscribe({
-        //     next: (settings) => this._settings.set(settings),
-        //     error: (err) => console.error('Failed to load settings', err)
-        // });
-
-        return this.api.getStatus().pipe(
-            tap((status) => {
-                if (status) this._status.set(status);
-                this._loading.set(false);
-            }));
     }
 
     selectTrain(id: string): void {
