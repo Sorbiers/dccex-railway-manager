@@ -5,11 +5,26 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
+import {
+  APP_CONFIG,
+  BACKEND_CONNECTION,
+  loadAppConfig,
+  resolveBackendConnection
+} from './app/services/app-config';
 
-bootstrapApplication(AppComponent, {
-  providers: [
-    provideRouter(routes),
-    provideHttpClient(),
-    provideAnimationsAsync()
-  ]
-}).catch((err) => console.error(err));
+// Resolve the back-end connection from appconfig.json + storage + URL before
+// the app boots, then expose both via injection tokens.
+loadAppConfig().then((appConfig) => {
+  const backend = resolveBackendConnection(appConfig);
+  console.log('Resolved back-end connection', backend);
+
+  bootstrapApplication(AppComponent, {
+    providers: [
+      provideRouter(routes),
+      provideHttpClient(),
+      provideAnimationsAsync(),
+      { provide: APP_CONFIG, useValue: appConfig },
+      { provide: BACKEND_CONNECTION, useValue: backend }
+    ]
+  }).catch((err) => console.error(err));
+});

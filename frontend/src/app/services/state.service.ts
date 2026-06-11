@@ -1,6 +1,7 @@
 import { Injectable, inject, signal, computed, effect } from '@angular/core';
 import { Device, WeeklySchedule, Settings, ConnectionStatus } from '../models';
 import { ApiService } from './api.service';
+import { APP_CONFIG, BACKEND_CONNECTION, persistBackendConnection } from './app-config';
 import { Observable, tap } from 'rxjs';
 
 
@@ -26,6 +27,10 @@ interface ControllerState {
 })
 export class StateService {
     private api = inject(ApiService);
+
+    // Back-end connection resolved before bootstrap (appconfig.json + storage + URL).
+    private backend = inject(BACKEND_CONNECTION);
+    private appConfig = inject(APP_CONFIG);
 
     // Signals for state management
     private _devices = signal<Device[]>([]);
@@ -90,34 +95,34 @@ export class StateService {
     }
 
     restoreSettings() {
-        let _settings: Settings = this._settings() ||
+        // The back-end host/port were resolved before bootstrap via the lookup
+        // sequence (session storage -> local storage -> appconfig.json -> URL
+        // -> defaults). Everything else is loaded from the back-end below.
+        const _settings: Settings = this._settings() ||
         {
-            backend: { host: window.location.hostname, port: 3000 },
+            backend: { host: this.backend.host, port: this.backend.port },
             dccex: { host: '192.168.4.1', port: 2560, autoConnect: true },
             ui: { theme: 'system', showAdvancedControls: false }
         };
 
-        if (window.location.hostname === 'localhost') {
-            const settings = localStorage.getItem('settings');
-            if (settings) {
-                const parsedSettings = JSON.parse(settings) as Settings;
-                _settings = parsedSettings;
-            } else {
-                _settings.backend.host = 'localhost';
-            }
-        }
-
-        this.api.setBaseUrl(`http://${_settings.backend.host}:${_settings.backend.port}/api`);
+        this.api.setBaseUrl(`http://${this.backend.host}:${this.backend.port}/api`);
 
         this.api.getSettings().subscribe({
             next: (settings) => {
                 if (settings) {
-                    _settings = settings;
+                    // Keep the resolved connection as the source of truth; all
+                    // other params come from the back-end.
+                    settings.backend = { host: this.backend.host, port: this.backend.port };
+                    this._settings.set(settings);
+                } else {
+                    this._settings.set(_settings);
                 }
-                this._settings.set(_settings);
             },
             error: (err) => {
                 console.error('Failed to load settings', err);
+                // Still surface the resolved connection so the WebSocket
+                // reconnect loop can keep trying to reach the back-end.
+                this._settings.set(_settings);
             }
         });
 
@@ -141,6 +146,14 @@ export class StateService {
     setSettings(settings: Settings) {
         this._settings.set(settings);
         localStorage.setItem('settings', JSON.stringify(settings));
+        // Keep the dedicated back-end connection cache in sync with an explicit
+        // host/port change so it takes precedence on the next load.
+        if (settings.backend?.host) {
+            persistBackendConnection(
+                { host: settings.backend.host, port: settings.backend.port },
+                this.appConfig
+            );
+        }
     }
 
     initWebSocket(): void {
@@ -152,6 +165,9 @@ export class StateService {
             this.ws.onopen = () => {
                 console.log('WebSocket connected');
                 this._status.update(s => ({ ...s, backend: true }));
+                // Cache the working connection so future loads find it first
+                // (steps 1 & 2 of the lookup), respecting the appconfig flags.
+                persistBackendConnection(this.backend, this.appConfig);
             };
 
             this.ws.onmessage = (event) => {
