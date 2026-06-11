@@ -248,10 +248,10 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
               <div class="simulation-status">
                 @if (isSimulating) {
                   <mat-icon class="spinning">sync</mat-icon>
-                  @if (currentSimulationIndex < 0) {
+                  @if ((state.scheduleRun()?.currentIndex ?? -1) < 0) {
                     <span>Starting…</span>
                   } @else {
-                    <span>Step {{ currentSimulationIndex + 1 }} of {{ getSortedItems().length }}</span>
+                    <span>Step {{ (state.scheduleRun()?.currentIndex ?? 0) + 1 }} of {{ getSortedItems().length }}</span>
                   }
                 } @else if (simulationComplete) {
                   <mat-icon class="success">check_circle</mat-icon>
@@ -265,9 +265,9 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
             <div class="simulation-timeline">
               @for (item of getSortedItems(); track item.id; let i = $index) {
                 <div class="simulation-item"
-                     [class.current]="i === currentSimulationIndex"
-                     [class.completed]="i < currentSimulationIndex"
-                     [class.pending]="i > currentSimulationIndex">
+                     [class.current]="i === (state.scheduleRun()?.currentIndex ?? -1)"
+                     [class.completed]="i < (state.scheduleRun()?.currentIndex ?? -1)"
+                     [class.pending]="i > (state.scheduleRun()?.currentIndex ?? -1)">
                   <div class="simulation-time">+{{ item.offset }}</div>
                   <div class="simulation-content">
                     <div class="simulation-device">
@@ -277,13 +277,13 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
                     <div class="simulation-action">
                       {{ getActionDescription(item) }}
                     </div>
-                    @if (i === currentSimulationIndex && isSimulating) {
+                    @if (i === (state.scheduleRun()?.currentIndex ?? -1) && isSimulating) {
                       <div class="simulation-executing">
                         <mat-icon class="spinning">sync</mat-icon>
                         Executing...
                       </div>
                     }
-                    @if (i < currentSimulationIndex) {
+                    @if (i < (state.scheduleRun()?.currentIndex ?? -1)) {
                       <div class="simulation-executed">
                         <mat-icon>check</mat-icon>
                         Done
@@ -818,7 +818,7 @@ export class ScheduleDialogComponent implements OnDestroy {
   private dialogRef = inject(MatDialogRef<ScheduleDialogComponent>);
   data: ScheduleDialogData = inject(MAT_DIALOG_DATA);
   private api = inject(ApiService);
-  private state = inject(StateService);
+  readonly state = inject(StateService);
 
   name = '';
   startTime = '08:00:00';
@@ -852,7 +852,6 @@ export class ScheduleDialogComponent implements OnDestroy {
   showSimulation = false;
   isSimulating = false;
   simulationComplete = false;
-  currentSimulationIndex = -1;
 
   constructor() {
     if (this.data.schedule) {
@@ -871,14 +870,13 @@ export class ScheduleDialogComponent implements OnDestroy {
       this.itemCounter = this.items.length;
     }
 
-    // Track simulation progress via WebSocket (immediate) rather than polling.
+    // Detect run completion via WebSocket signal. currentSimulationIndex is
+    // read directly from state.scheduleRun() in the template (signal → always reactive).
     effect(() => {
       const run = this.state.scheduleRun();
       if (!this.isSimulating) return;
-      if (run?.mode === 'simulation' && run.isRunning) {
-        this.currentSimulationIndex = run.currentIndex;
-      } else if (!run) {
-        // Run ended (completed or cancelled by something else)
+      if (!run) {
+        // Run ended (completed or cancelled)
         this.isSimulating = false;
         this.simulationComplete = true;
       }
@@ -1040,7 +1038,6 @@ export class ScheduleDialogComponent implements OnDestroy {
   startSimulation(): void {
     this.isSimulating = true;
     this.simulationComplete = false;
-    this.currentSimulationIndex = -1;
 
     const scheduleId = this.data.schedule?.id || 'temp-schedule';
     this.api.simulateSchedule(scheduleId, this.getSortedItems(), this.simulationSpeedFactor).subscribe({
@@ -1067,7 +1064,6 @@ export class ScheduleDialogComponent implements OnDestroy {
 
   resetSimulation(): void {
     this.stopSimulation();
-    this.currentSimulationIndex = -1;
     this.simulationComplete = false;
   }
 
