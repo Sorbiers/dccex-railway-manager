@@ -36,6 +36,7 @@ nul
 # Data files (generated at runtime)
 backend/dist
 backend/src/data/*.json
+backend/data/
 
 # Logs
 logs/
