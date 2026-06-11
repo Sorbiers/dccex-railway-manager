@@ -41,7 +41,8 @@ export interface Device {
 
 export interface ScheduleItem {
   id: string;
-  time: string;
+  /** Offset from the schedule start time, "HH:MM:SS". */
+  offset: string;
   deviceId: string;
   action: 'start' | 'stop' | 'speed' | 'function' | 'reset';
   params?: {
@@ -58,8 +59,24 @@ export interface WeeklySchedule {
   id: string;
   name: string;
   enabled: boolean;
+  /** Wall-clock time the program starts, "HH:MM:SS". Item offsets are relative to this. */
+  startTime: string;
   days: ('mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun')[];
   items: ScheduleItem[];
+  /** When true, all devices used by the program are reset after the last item. */
+  resetAtEnd?: boolean;
+}
+
+/** Live progress of a running schedule program (simulation, manual run, or scheduled). */
+export interface ScheduleRunStatus {
+  scheduleId: string;
+  scheduleName: string;
+  mode: 'simulation' | 'manual' | 'scheduled';
+  currentIndex: number;
+  totalItems: number;
+  isRunning: boolean;
+  completed: boolean;
+  speedFactor: number;
 }
 
 export interface Settings {

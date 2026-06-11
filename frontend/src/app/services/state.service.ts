@@ -1,5 +1,5 @@
 import { Injectable, inject, signal, computed, effect } from '@angular/core';
-import { Device, WeeklySchedule, Settings, ConnectionStatus } from '../models';
+import { Device, WeeklySchedule, Settings, ConnectionStatus, ScheduleRunStatus } from '../models';
 import { ApiService } from './api.service';
 import { APP_CONFIG, BACKEND_CONNECTION, persistBackendConnection } from './app-config';
 import { Observable, tap } from 'rxjs';
@@ -65,6 +65,10 @@ export class StateService {
     // MAIN track power state
     private _statePowerMAIN = signal<boolean>(false);
     readonly statePowerMAIN = this._statePowerMAIN.asReadonly();
+
+    // Live progress of the running schedule program (null when idle)
+    private _scheduleRun = signal<ScheduleRunStatus | null>(null);
+    readonly scheduleRun = this._scheduleRun.asReadonly();
 
     // Emergency-stop latch (set on e-stop, cleared by any throttle input)
     private _estop = signal<boolean>(false);
@@ -230,6 +234,13 @@ export class StateService {
                 console.log('DCC-EX message:', message.data);
                 this.handleDccMessage(message.data as string);
                 break;
+            case 'schedule-run': {
+                const run = message.data as ScheduleRunStatus | null;
+                this._scheduleRun.set(run && !run.completed ? run : null);
+                // Devices' speed/functions changed on the backend during the run
+                if (run) this.refreshDevices();
+                break;
+            }
         }
     }
 

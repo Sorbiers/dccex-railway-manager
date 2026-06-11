@@ -120,11 +120,18 @@ export class ApiService {
     }
 
     // Schedule simulation
-    simulateSchedule(scheduleId: string, items: any[]): Observable<boolean> {
+    simulateSchedule(scheduleId: string, items: any[], speedFactor = 1): Observable<boolean> {
         return this.http.post<ApiResponse<void>>(`${this.baseUrl}/dcc/simulate-schedule`, {
             scheduleId,
-            items
+            items,
+            speedFactor
         }).pipe(map(res => res.success));
+    }
+
+    // Run a saved schedule program immediately (real-time)
+    runSchedule(scheduleId: string): Observable<boolean> {
+        return this.http.post<ApiResponse<void>>(`${this.baseUrl}/dcc/run-schedule`, { scheduleId })
+            .pipe(map(res => res.success));
     }
 
     cancelSimulation(): Observable<boolean> {

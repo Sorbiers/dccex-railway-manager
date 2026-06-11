@@ -39,14 +39,30 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../components/conf
 
       <div class="schedules-list">
         @for (schedule of state.schedules(); track schedule.id) {
-          <mat-card class="schedule-card">
+          <mat-card class="schedule-card" [class.running]="isRunning(schedule)">
             <mat-card-header>
               <mat-icon mat-card-avatar>schedule</mat-icon>
               <mat-card-title>{{ schedule.name }}</mat-card-title>
               <mat-card-subtitle>
-                {{ schedule.items.length }} actions
+                Starts {{ schedule.startTime }} &middot; {{ schedule.items.length }} actions
+                @if (schedule.enabled && schedule.days.length) {
+                  &middot; next run {{ getNextRun(schedule) }}
+                }
               </mat-card-subtitle>
             </mat-card-header>
+
+            @if (isRunning(schedule)) {
+              <div class="run-banner">
+                <mat-icon class="spinning">sync</mat-icon>
+                <span>
+                  {{ runModeLabel() }} — step {{ state.scheduleRun()!.currentIndex + 1 }} of
+                  {{ state.scheduleRun()!.totalItems }}
+                </span>
+                <button mat-stroked-button color="warn" (click)="stopRun()">
+                  <mat-icon>stop</mat-icon> Stop
+                </button>
+              </div>
+            }
 
             <mat-card-content>
               <!-- Days chips -->
@@ -63,7 +79,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../components/conf
                 <mat-list class="items-preview">
                   @for (item of schedule.items.slice(0, 3); track item.id) {
                     <mat-list-item>
-                      <span matListItemTitle>{{ item.time }} - {{ getDeviceName(item.deviceId) }}</span>
+                      <span matListItemTitle>+{{ item.offset }} - {{ getDeviceName(item.deviceId) }}</span>
                       <span matListItemLine>{{ getActionLabel(item) }}</span>
                     </mat-list-item>
                   }
@@ -83,6 +99,14 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../components/conf
                 color="primary">
                 {{ schedule.enabled ? 'Active' : 'Inactive' }}
               </mat-slide-toggle>
+              <button mat-icon-button color="primary" (click)="runNow(schedule)"
+                      [disabled]="anyRunActive() || schedule.items.length === 0"
+                      matTooltip="Run now">
+                <mat-icon>play_arrow</mat-icon>
+              </button>
+              <button mat-icon-button (click)="duplicateSchedule(schedule)" matTooltip="Duplicate">
+                <mat-icon>content_copy</mat-icon>
+              </button>
               <button mat-icon-button (click)="openEditDialog(schedule)" matTooltip="Edit">
                 <mat-icon>edit</mat-icon>
               </button>
@@ -135,6 +159,40 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../components/conf
           color: #1976d2;
         }
       }
+
+      &.running {
+        outline: 2px solid #ff9800;
+      }
+    }
+
+    .run-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 16px 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background-color: #fff3e0;
+      font-size: 13px;
+      font-weight: 500;
+
+      span {
+        flex: 1;
+      }
+
+      .spinning {
+        animation: spin 1s linear infinite;
+        color: #ff9800;
+      }
+    }
+
+    :host-context(.dark-theme) .run-banner {
+      background-color: rgba(255, 152, 0, 0.2);
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
 
     :host-context(.dark-theme) .schedule-card mat-card-header mat-icon[mat-card-avatar] {
@@ -267,6 +325,72 @@ export class SchedulesComponent {
         });
       }
     });
+  }
+
+  isRunning(schedule: WeeklySchedule): boolean {
+    const run = this.state.scheduleRun();
+    return !!run && run.scheduleId === schedule.id && run.isRunning;
+  }
+
+  anyRunActive(): boolean {
+    return !!this.state.scheduleRun()?.isRunning;
+  }
+
+  runModeLabel(): string {
+    switch (this.state.scheduleRun()?.mode) {
+      case 'scheduled': return 'Scheduled run';
+      case 'simulation': return 'Simulation';
+      default: return 'Running';
+    }
+  }
+
+  runNow(schedule: WeeklySchedule): void {
+    this.api.runSchedule(schedule.id).subscribe({
+      error: (err) => console.error('Failed to run schedule', err)
+    });
+  }
+
+  stopRun(): void {
+    this.api.cancelSimulation().subscribe({
+      error: (err) => console.error('Failed to stop run', err)
+    });
+  }
+
+  duplicateSchedule(schedule: WeeklySchedule): void {
+    const copy: Partial<WeeklySchedule> = {
+      name: `${schedule.name} (copy)`,
+      enabled: false,
+      startTime: schedule.startTime,
+      days: [...schedule.days],
+      resetAtEnd: schedule.resetAtEnd,
+      items: schedule.items.map((item, i) => ({ ...item, id: `copy-item-${i}`, params: { ...item.params } }))
+    };
+    this.api.createSchedule(copy).subscribe({
+      next: () => this.state.refreshSchedules(),
+      error: (err) => console.error('Failed to duplicate schedule', err)
+    });
+  }
+
+  /** "Mon 08:00", "today 16:30", "tomorrow 08:00" — next occurrence of startTime on an active day. */
+  getNextRun(schedule: WeeklySchedule): string {
+    const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const now = new Date();
+    const [h = 0, m = 0, s = 0] = schedule.startTime.split(':').map(Number);
+    const startSeconds = h * 3600 + m * 60 + s;
+    const nowSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
+    for (let i = 0; i < 7; i++) {
+      const day = (now.getDay() + i) % 7;
+      if (!schedule.days.includes(dayKeys[day] as any)) continue;
+      if (i === 0 && nowSeconds >= startSeconds) continue; // already passed today
+      const time = schedule.startTime.slice(0, 5);
+      if (i === 0) return `today ${time}`;
+      if (i === 1) return `tomorrow ${time}`;
+      return `${dayNames[day]} ${time}`;
+    }
+    // Only day is today and the time already passed — next week same day
+    return `${dayNames[now.getDay()]} ${schedule.startTime.slice(0, 5)} (next week)`;
   }
 
   toggleEnabled(schedule: WeeklySchedule): void {

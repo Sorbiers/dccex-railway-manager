@@ -82,11 +82,19 @@ export class TrainsComponent {
   }
 
   confirmDelete(device: Device): void {
+    // Warn when schedules reference this device — the backend will drop those
+    // actions on delete.
+    const affected = this.state.schedules()
+      .filter(s => s.items.some(i => i.deviceId === device.id));
+    const scheduleWarning = affected.length
+      ? ` It is used by ${affected.length} schedule(s) (${affected.map(s => `"${s.name}"`).join(', ')}); those actions will be removed.`
+      : '';
+
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '400px',
       data: {
         title: 'Delete Device',
-        message: `Are you sure you want to delete "${device.name}"? This action cannot be undone.`,
+        message: `Are you sure you want to delete "${device.name}"? This action cannot be undone.${scheduleWarning}`,
         confirmText: 'Delete',
         confirmColor: 'warn'
       } as ConfirmDialogData
@@ -95,7 +103,10 @@ export class TrainsComponent {
     dialogRef.afterClosed().subscribe(confirmed => {
       if (confirmed) {
         this.api.deleteDevice(device.id).subscribe({
-          next: () => this.state.refreshDevices(),
+          next: () => {
+            this.state.refreshDevices();
+            this.state.refreshSchedules();
+          },
           error: (err) => console.error('Failed to delete device', err)
         });
       }

@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy } from '@angular/core';
+import { Component, inject, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -11,6 +11,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDividerModule } from '@angular/material/divider';
 import { WeeklySchedule, ScheduleItem, Device } from '../../models';
 import { ApiService } from '../../services/api.service';
+import { StateService } from '../../services/state.service';
 
 export interface ScheduleDialogData {
   mode: 'add' | 'edit';
@@ -39,10 +40,26 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
     <h2 mat-dialog-title>{{ data.mode === 'add' ? 'Add Schedule' : 'Edit Schedule' }}</h2>
 
     <mat-dialog-content class="dialog-content">
-      <mat-form-field class="form-field-full">
-        <mat-label>Schedule Name</mat-label>
-        <input matInput [(ngModel)]="name" placeholder="e.g., Morning Commuter">
-      </mat-form-field>
+      <div class="header-row">
+        <mat-form-field class="header-name">
+          <mat-label>Schedule Name</mat-label>
+          <input matInput [(ngModel)]="name" placeholder="e.g., Morning Commuter">
+        </mat-form-field>
+
+        <mat-form-field class="header-start-time">
+          <mat-label>Start Time</mat-label>
+          <input matInput type="time" [(ngModel)]="startTime" step="1">
+        </mat-form-field>
+
+        <mat-checkbox class="header-disabled" [(ngModel)]="disabled">
+          Disabled
+        </mat-checkbox>
+
+        <mat-checkbox class="header-reset" [(ngModel)]="resetAtEnd"
+                      matTooltip="Stop and clear functions on all used devices after the last action">
+          Reset devices at end
+        </mat-checkbox>
+      </div>
 
       <!-- Days selection -->
       <div class="days-section">
@@ -75,8 +92,10 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
         @for (item of items; track item.id; let i = $index) {
           <div class="item-row">
             <mat-form-field class="item-time">
-              <mat-label>Time</mat-label>
-              <input matInput type="time" [(ngModel)]="item.time" step="1">
+              <mat-label>Offset (+HH:MM:SS)</mat-label>
+              <input matInput type="text" [(ngModel)]="item.offset"
+                     placeholder="00:05:00" pattern="\\d{1,2}:\\d{2}(:\\d{2})?">
+              <mat-hint>at {{ getAbsoluteTime(item) }}</mat-hint>
             </mat-form-field>
 
             <mat-form-field class="item-device">
@@ -149,6 +168,12 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
         @if (items.length === 0) {
           <p class="no-items">No actions defined. Click "Add Action" to schedule train operations.</p>
         }
+
+        @for (warning of getWarnings(); track warning) {
+          <p class="validation-warning">
+            <mat-icon>warning</mat-icon> {{ warning }}
+          </p>
+        }
       </div>
     </mat-dialog-content>
 
@@ -179,6 +204,7 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
           <div class="preview-content">
             <div class="preview-schedule-info">
               <h4>{{ name || 'Unnamed Schedule' }}</h4>
+              <div class="preview-start">Starts at {{ startTime }}</div>
               <div class="preview-days">
                 @for (day of getSelectedDays(); track day) {
                   <span class="day-chip">{{ dayLabels[day] }}</span>
@@ -189,7 +215,7 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
             <div class="timeline">
               @for (item of getSortedItems(); track item.id) {
                 <div class="timeline-item">
-                  <div class="timeline-time">{{ item.time }}</div>
+                  <div class="timeline-time">+{{ item.offset }}<br><span class="timeline-abs">{{ getAbsoluteTime(item) }}</span></div>
                   <div class="timeline-content">
                     <div class="timeline-device">
                       <mat-icon>{{ getDeviceType(item.deviceId) === 'train' ? 'train' : 'call_split' }}</mat-icon>
@@ -222,7 +248,11 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
               <div class="simulation-status">
                 @if (isSimulating) {
                   <mat-icon class="spinning">sync</mat-icon>
-                  <span>Simulating action {{ currentSimulationIndex + 1 }} of {{ getSortedItems().length }}</span>
+                  @if (currentSimulationIndex < 0) {
+                    <span>Starting…</span>
+                  } @else {
+                    <span>Step {{ currentSimulationIndex + 1 }} of {{ getSortedItems().length }}</span>
+                  }
                 } @else if (simulationComplete) {
                   <mat-icon class="success">check_circle</mat-icon>
                   <span>Simulation complete!</span>
@@ -238,7 +268,7 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
                      [class.current]="i === currentSimulationIndex"
                      [class.completed]="i < currentSimulationIndex"
                      [class.pending]="i > currentSimulationIndex">
-                  <div class="simulation-time">{{ item.time }}</div>
+                  <div class="simulation-time">+{{ item.offset }}</div>
                   <div class="simulation-content">
                     <div class="simulation-device">
                       <mat-icon>{{ getDeviceType(item.deviceId) === 'train' ? 'train' : 'call_split' }}</mat-icon>
@@ -266,6 +296,14 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
             <div class="simulation-controls">
               @if (!isSimulating && !simulationComplete) {
+                <mat-form-field class="speed-factor-field">
+                  <mat-label>Speed</mat-label>
+                  <mat-select [(ngModel)]="simulationSpeedFactor">
+                    <mat-option [value]="1">Real time (1&times;)</mat-option>
+                    <mat-option [value]="10">Fast (10&times;)</mat-option>
+                    <mat-option [value]="60">Very fast (60&times;)</mat-option>
+                  </mat-select>
+                </mat-form-field>
                 <button mat-raised-button color="primary" (click)="startSimulation()">
                   <mat-icon>play_arrow</mat-icon> Start Simulation
                 </button>
@@ -295,6 +333,46 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
     .form-field-full {
       width: 100%;
       margin-bottom: 8px;
+    }
+
+    .header-row {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+
+      .header-name {
+        flex: 1;
+        min-width: 200px;
+      }
+
+      .header-start-time {
+        width: 160px;
+        flex-shrink: 0;
+      }
+
+      .header-disabled,
+      .header-reset {
+        flex-shrink: 0;
+      }
+    }
+
+    .preview-start {
+      font-size: 14px;
+      color: #1976d2;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    :host-context(.dark-theme) .preview-start {
+      color: #64b5f6;
+    }
+
+    .timeline-abs {
+      font-weight: 400;
+      font-size: 11px;
+      opacity: 0.7;
     }
 
     .days-section {
@@ -379,6 +457,33 @@ type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
       font-style: italic;
       text-align: center;
       padding: 16px;
+    }
+
+    .validation-warning {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background-color: #fff3e0;
+      color: #e65100;
+      font-size: 13px;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
+
+    :host-context(.dark-theme) .validation-warning {
+      background-color: rgba(255, 152, 0, 0.15);
+      color: #ffb74d;
+    }
+
+    .speed-factor-field {
+      width: 160px;
     }
 
     .preview-overlay {
@@ -713,8 +818,13 @@ export class ScheduleDialogComponent implements OnDestroy {
   private dialogRef = inject(MatDialogRef<ScheduleDialogComponent>);
   data: ScheduleDialogData = inject(MAT_DIALOG_DATA);
   private api = inject(ApiService);
+  private state = inject(StateService);
 
   name = '';
+  startTime = '08:00:00';
+  disabled = false;
+  resetAtEnd = false;
+  simulationSpeedFactor = 1;
   selectedDays: Record<DayKey, boolean> = {
     mon: false,
     tue: false,
@@ -743,27 +853,69 @@ export class ScheduleDialogComponent implements OnDestroy {
   isSimulating = false;
   simulationComplete = false;
   currentSimulationIndex = -1;
-  private statusCheckInterval: any = null;
 
   constructor() {
     if (this.data.schedule) {
       this.name = this.data.schedule.name;
+      this.startTime = this.normalizeTime(this.data.schedule.startTime || '08:00:00');
+      this.disabled = !this.data.schedule.enabled;
+      this.resetAtEnd = !!this.data.schedule.resetAtEnd;
       this.data.schedule.days.forEach(day => {
         this.selectedDays[day] = true;
       });
       this.items = this.data.schedule.items.map(item => ({
         ...item,
+        offset: this.normalizeTime(item.offset || (item as any).time || '00:00:00'),
         params: { ...item.params }
       }));
       this.itemCounter = this.items.length;
     }
+
+    // Track simulation progress via WebSocket (immediate) rather than polling.
+    effect(() => {
+      const run = this.state.scheduleRun();
+      if (!this.isSimulating) return;
+      if (run?.mode === 'simulation' && run.isRunning) {
+        this.currentSimulationIndex = run.currentIndex;
+      } else if (!run) {
+        // Run ended (completed or cancelled by something else)
+        this.isSimulating = false;
+        this.simulationComplete = true;
+      }
+    });
+  }
+
+  /** Pad "HH:MM" to "HH:MM:SS" so string comparison and math are uniform. */
+  private normalizeTime(t: string): string {
+    return t.length === 5 ? `${t}:00` : t;
+  }
+
+  private timeToSeconds(t: string): number {
+    const [h = 0, m = 0, s = 0] = this.normalizeTime(t).split(':').map(Number);
+    return h * 3600 + m * 60 + s;
+  }
+
+  /** Wall-clock time this item fires: startTime + offset (wraps past midnight). */
+  getAbsoluteTime(item: ScheduleItem): string {
+    const total = (this.timeToSeconds(this.startTime) + this.timeToSeconds(item.offset || '00:00:00')) % 86400;
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${pad(h)}:${pad(m)}:${pad(s)}`;
   }
 
   addItem(): void {
     const defaultDevice = this.data.devices[0];
+    // Default the new action to 1 minute after the current latest offset.
+    const lastOffset = this.items.length
+      ? Math.max(...this.items.map(i => this.timeToSeconds(i.offset || '00:00:00')))
+      : -60;
+    const next = lastOffset + 60;
+    const pad = (n: number) => n.toString().padStart(2, '0');
     this.items.push({
       id: `new-item-${++this.itemCounter}`,
-      time: '08:00:00',
+      offset: `${pad(Math.floor(next / 3600))}:${pad(Math.floor((next % 3600) / 60))}:${pad(next % 60)}`,
       deviceId: defaultDevice?.id || '',
       action: 'start',
       params: {
@@ -778,7 +930,7 @@ export class ScheduleDialogComponent implements OnDestroy {
   }
 
   sortItems(): void {
-    this.items.sort((a, b) => a.time.localeCompare(b.time));
+    this.items.sort((a, b) => (a.offset || '').localeCompare(b.offset || ''));
   }
 
   getDeviceFunctions(deviceId: string) {
@@ -815,7 +967,7 @@ export class ScheduleDialogComponent implements OnDestroy {
   }
 
   getSortedItems(): ScheduleItem[] {
-    return [...this.items].sort((a, b) => a.time.localeCompare(b.time));
+    return [...this.items].sort((a, b) => (a.offset || '').localeCompare(b.offset || ''));
   }
 
   getActionDescription(item: ScheduleItem): string {
@@ -836,6 +988,35 @@ export class ScheduleDialogComponent implements OnDestroy {
       default:
         return item.action;
     }
+  }
+
+  /** Non-blocking sanity checks shown under the actions list. */
+  getWarnings(): string[] {
+    const warnings: string[] = [];
+    if (!this.items.length) return warnings;
+
+    const offsets = this.items.map(i => this.normalizeTime(i.offset || '00:00:00'));
+    const seen = new Set<string>();
+    const dupes = new Set<string>();
+    offsets.forEach(o => (seen.has(o) ? dupes.add(o) : seen.add(o)));
+    if (dupes.size) {
+      warnings.push(`Duplicate offsets: ${[...dupes].map(d => '+' + d).join(', ')} — those actions fire at the same moment.`);
+    }
+
+    const first = Math.min(...offsets.map(o => this.timeToSeconds(o)));
+    if (first > 0) {
+      warnings.push(`First action is at +${offsets.find(o => this.timeToSeconds(o) === first)} — nothing happens before that. Intended?`);
+    }
+
+    if (this.items.some(i => !i.deviceId || !this.data.devices.find(d => d.id === i.deviceId))) {
+      warnings.push('Some actions have no (or an unknown) device selected.');
+    }
+
+    const badOffset = this.items.find(i => !/^\d{1,2}:\d{2}(:\d{2})?$/.test(i.offset || ''));
+    if (badOffset) {
+      warnings.push(`Offset "${badOffset.offset}" is not valid — use HH:MM:SS (e.g. 00:05:00).`);
+    }
+    return warnings;
   }
 
   previewSchedule(): void {
@@ -859,17 +1040,13 @@ export class ScheduleDialogComponent implements OnDestroy {
   startSimulation(): void {
     this.isSimulating = true;
     this.simulationComplete = false;
-    this.currentSimulationIndex = 0;
+    this.currentSimulationIndex = -1;
 
-    // Start backend simulation
     const scheduleId = this.data.schedule?.id || 'temp-schedule';
-    this.api.simulateSchedule(scheduleId, this.getSortedItems()).subscribe({
+    this.api.simulateSchedule(scheduleId, this.getSortedItems(), this.simulationSpeedFactor).subscribe({
       next: (success) => {
-        if (success) {
-          console.log('Backend simulation started');
-          this.startStatusPolling();
-        } else {
-          console.error('Failed to start simulation');
+        if (!success) {
+          console.error('Failed to start simulation (another run active?)');
           this.isSimulating = false;
         }
       },
@@ -881,20 +1058,11 @@ export class ScheduleDialogComponent implements OnDestroy {
   }
 
   stopSimulation(): void {
+    const wasSimulating = this.isSimulating;
     this.isSimulating = false;
-    this.stopStatusPolling();
-
-    // Cancel backend simulation
-    this.api.cancelSimulation().subscribe({
-      next: (success) => {
-        if (success) {
-          console.log('Simulation cancelled');
-        }
-      },
-      error: (err) => {
-        console.error('Error cancelling simulation:', err);
-      }
-    });
+    if (wasSimulating) {
+      this.api.cancelSimulation().subscribe();
+    }
   }
 
   resetSimulation(): void {
@@ -903,46 +1071,7 @@ export class ScheduleDialogComponent implements OnDestroy {
     this.simulationComplete = false;
   }
 
-  private startStatusPolling(): void {
-    this.stopStatusPolling();
-
-    // Poll every 200ms to update UI
-    this.statusCheckInterval = setInterval(() => {
-      this.api.getSimulationStatus().subscribe({
-        next: (status) => {
-          if (status) {
-            this.currentSimulationIndex = status.currentIndex;
-            if (status.completed) {
-              this.isSimulating = false;
-              this.simulationComplete = true;
-              this.stopStatusPolling();
-            }
-          } else {
-            // No simulation running
-            if (this.isSimulating) {
-              this.isSimulating = false;
-              this.simulationComplete = true;
-              this.stopStatusPolling();
-            }
-          }
-        },
-        error: (err) => {
-          console.error('Error getting simulation status:', err);
-        }
-      });
-    }, 200);
-  }
-
-  private stopStatusPolling(): void {
-    if (this.statusCheckInterval) {
-      clearInterval(this.statusCheckInterval);
-      this.statusCheckInterval = null;
-    }
-  }
-
   ngOnDestroy(): void {
-    this.stopStatusPolling();
-    // If simulation is running, cancel it
     if (this.isSimulating) {
       this.api.cancelSimulation().subscribe();
     }
@@ -967,8 +1096,11 @@ export class ScheduleDialogComponent implements OnDestroy {
 
     const schedule: Partial<WeeklySchedule> = {
       name: this.name.trim(),
+      startTime: this.normalizeTime(this.startTime),
+      enabled: !this.disabled,
+      resetAtEnd: this.resetAtEnd,
       days,
-      items: this.items
+      items: this.items.map(item => ({ ...item, offset: this.normalizeTime(item.offset) }))
     };
 
     this.dialogRef.close(schedule);
