@@ -1,7 +1,22 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
+// Persist runtime data in a stable, run-mode-independent location so settings
+// survive rebuilds and switching between `npm run dev` and the built server.
+// Override with the DATA_DIR env var; otherwise use ./data under the process
+// working directory (the dir you launch the server from).
+const DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(process.cwd(), 'data');
+
+// Legacy locations used before DATA_DIR was stabilized. On first run we migrate
+// any existing files from here so saved settings aren't lost. Ordered by
+// preference: the source data dir (the real saved config) before the
+// build-output copy.
+const LEGACY_DATA_DIRS = [
+  path.join(__dirname, '..', '..', 'src', 'data'),
+  path.join(__dirname, '..', 'data')
+];
 
 // Ensure data directory exists
 function ensureDataDir(): void {
@@ -41,7 +56,16 @@ function initializeDataFiles(): void {
 
   files.forEach(({ name, defaultData }) => {
     const filePath = path.join(DATA_DIR, name);
-    if (!fs.existsSync(filePath)) {
+    if (fs.existsSync(filePath)) return;
+
+    // Migrate from a legacy location if available, else seed defaults.
+    const legacy = LEGACY_DATA_DIRS
+      .map(dir => path.join(dir, name))
+      .find(p => p !== filePath && fs.existsSync(p));
+    if (legacy) {
+      fs.copyFileSync(legacy, filePath);
+      console.log(`Migrated ${name} from ${legacy} to ${filePath}`);
+    } else {
       fs.writeFileSync(filePath, JSON.stringify(defaultData, null, 2), 'utf-8');
       console.log(`Created ${name} with default data`);
     }
