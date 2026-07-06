@@ -42,6 +42,7 @@ export class AppComponent {
 
   isDarkTheme = signal(false);
   currentUrl = signal('/');
+  private kioskScrollLastY: number | null = null;
 
   constructor() {
     // Load theme preference from localStorage
@@ -65,6 +66,38 @@ export class AppComponent {
 
   isKioskMainRoute(): boolean {
     return this.currentUrl() === '/';
+  }
+
+  private kioskRouteCanScroll(): boolean {
+    return this.layout.kiosk() && !this.isKioskMainRoute();
+  }
+
+  onKioskScrollStart(event: TouchEvent): void {
+    if (!this.kioskRouteCanScroll() || event.touches.length !== 1) {
+      this.kioskScrollLastY = null;
+      return;
+    }
+
+    this.kioskScrollLastY = event.touches[0].clientY;
+  }
+
+  onKioskScrollMove(event: TouchEvent): void {
+    if (!this.kioskRouteCanScroll() || this.kioskScrollLastY === null || event.touches.length !== 1) {
+      return;
+    }
+
+    const currentY = event.touches[0].clientY;
+    const deltaY = this.kioskScrollLastY - currentY;
+    const target = event.currentTarget as HTMLElement | null;
+    if (target && target.scrollHeight > target.clientHeight) {
+      target.scrollTop += deltaY;
+      event.preventDefault();
+    }
+    this.kioskScrollLastY = currentY;
+  }
+
+  onKioskScrollEnd(): void {
+    this.kioskScrollLastY = null;
   }
 
   private applyThemeToBody(isDark: boolean): void {

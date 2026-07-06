@@ -148,7 +148,12 @@
     </div>
     }
 
-    <main class="main-content" [class.kiosk-scrollable]="layout.kiosk() && !isKioskMainRoute()">
+    <main class="main-content"
+        [class.kiosk-scrollable]="layout.kiosk() && !isKioskMainRoute()"
+        (touchstart)="onKioskScrollStart($event)"
+        (touchmove)="onKioskScrollMove($event)"
+        (touchend)="onKioskScrollEnd()"
+        (touchcancel)="onKioskScrollEnd()">
         <router-outlet />
     </main>
 

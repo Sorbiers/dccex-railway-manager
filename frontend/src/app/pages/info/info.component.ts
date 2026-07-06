@@ -36,6 +36,51 @@ import { StorageInfo, SystemInfo } from '../../models';
       }
 
       @if (info(); as data) {
+        <mat-card>
+          <mat-card-header>
+            <mat-icon mat-card-avatar>wifi</mat-icon>
+            <mat-card-title>Network Interfaces</mat-card-title>
+            <mat-card-subtitle>{{ data.interfaces.length }} active</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="interfaces">
+              @for (iface of data.interfaces; track iface.name) {
+                <div class="interface-row">
+                  <div>
+                    <strong>{{ iface.name }}</strong>
+                    @if (iface.wifi?.ssid || iface.wifi?.signal) {
+                      <span class="wifi-detail">
+                        {{ iface.wifi?.ssid || 'WiFi' }}
+                        @if (iface.wifi?.signal) {
+                          - {{ iface.wifi?.signal }}
+                        }
+                      </span>
+                    }
+                  </div>
+                  <div class="addresses">
+                    @if (addressesByFamily(iface.addresses, 'IPv4').length) {
+                      <div class="address-group">
+                        <span class="address-label">IPv4</span>
+                        @for (addr of addressesByFamily(iface.addresses, 'IPv4'); track addr.address) {
+                          <span>{{ addr.address }}</span>
+                        }
+                      </div>
+                    }
+                    @if (addressesByFamily(iface.addresses, 'IPv6').length) {
+                      <div class="address-group ipv6">
+                        <span class="address-label">IPv6</span>
+                        @for (addr of addressesByFamily(iface.addresses, 'IPv6'); track addr.address) {
+                          <span>{{ addr.address }}</span>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </mat-card-content>
+        </mat-card>
+
         <section class="grid">
           <mat-card>
             <mat-card-header>
@@ -99,38 +144,6 @@ import { StorageInfo, SystemInfo } from '../../models';
             </mat-card-content>
           </mat-card>
         </section>
-
-        <mat-card>
-          <mat-card-header>
-            <mat-icon mat-card-avatar>wifi</mat-icon>
-            <mat-card-title>Network Interfaces</mat-card-title>
-            <mat-card-subtitle>{{ data.interfaces.length }} active</mat-card-subtitle>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="interfaces">
-              @for (iface of data.interfaces; track iface.name) {
-                <div class="interface-row">
-                  <div>
-                    <strong>{{ iface.name }}</strong>
-                    @if (iface.wifi?.ssid || iface.wifi?.signal) {
-                      <span class="wifi-detail">
-                        {{ iface.wifi?.ssid || 'WiFi' }}
-                        @if (iface.wifi?.signal) {
-                          - {{ iface.wifi?.signal }}
-                        }
-                      </span>
-                    }
-                  </div>
-                  <div class="addresses">
-                    @for (addr of iface.addresses; track addr.address) {
-                      <span>{{ addr.family }} {{ addr.address }}</span>
-                    }
-                  </div>
-                </div>
-              }
-            </div>
-          </mat-card-content>
-        </mat-card>
       }
 
       <ng-template #resourceMeter let-item="item">
@@ -223,8 +236,27 @@ import { StorageInfo, SystemInfo } from '../../models';
       text-align: right;
     }
 
+    .address-group {
+      display: grid;
+      gap: 3px;
+      justify-items: end;
+    }
+
+    .address-group.ipv6 {
+      margin-top: 7px;
+      padding-top: 7px;
+      border-top: 1px solid rgba(0, 0, 0, 0.12);
+    }
+
+    .address-label {
+      font-weight: 700;
+      color: #1976d2;
+      opacity: 1;
+    }
+
     .ok {
-      background: #c8e6c9 !important;
+      background: #2e7d32 !important;
+      color: #fff !important;
     }
 
     .fail {
@@ -242,6 +274,10 @@ import { StorageInfo, SystemInfo } from '../../models';
 
       .interface-row {
         border-bottom-color: rgba(255, 255, 255, 0.12);
+      }
+
+      .address-group.ipv6 {
+        border-top-color: rgba(255, 255, 255, 0.12);
       }
     }
   `]
@@ -274,6 +310,10 @@ export class InfoComponent implements OnInit {
 
   usedPercent(item: StorageInfo): number {
     return Math.max(0, Math.min(100, 100 - item.freePercent));
+  }
+
+  addressesByFamily(addresses: { family: string; address: string; mac: string }[], family: string): { family: string; address: string; mac: string }[] {
+    return addresses.filter(addr => addr.family === family);
   }
 
   formatBytes(value: number): string {
