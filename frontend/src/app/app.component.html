@@ -60,6 +60,9 @@
             <a mat-menu-item routerLink="/settings" routerLinkActive="active">
                 <mat-icon>settings</mat-icon> Settings
             </a>
+            <a mat-menu-item routerLink="/info" routerLinkActive="active">
+                <mat-icon>info</mat-icon> Info
+            </a>
         </mat-menu>
     </div>
     } @else {
@@ -100,6 +103,9 @@
             <a mat-button routerLink="/settings" routerLinkActive="active">
                 <mat-icon>settings</mat-icon> Settings
             </a>
+            <a mat-button routerLink="/info" routerLinkActive="active">
+                <mat-icon>info</mat-icon> Info
+            </a>
         </nav>
 
         <!-- Mobile menu -->
@@ -118,6 +124,9 @@
             </a>
             <a mat-menu-item routerLink="/settings">
                 <mat-icon>settings</mat-icon> Settings
+            </a>
+            <a mat-menu-item routerLink="/info">
+                <mat-icon>info</mat-icon> Info
             </a>
         </mat-menu>
     </mat-toolbar>
@@ -139,7 +148,7 @@
     </div>
     }
 
-    <main class="main-content">
+    <main class="main-content" [class.kiosk-scrollable]="layout.kiosk() && !isKioskMainRoute()">
         <router-outlet />
     </main>
 

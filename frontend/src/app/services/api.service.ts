@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
-import { Device, WeeklySchedule, Settings, ApiResponse, ConnectionStatus, DccCommand } from '../models';
+import { Device, WeeklySchedule, Settings, ApiResponse, ConnectionStatus, DccCommand, SystemInfo } from '../models';
 
 @Injectable({
     providedIn: 'root'
@@ -80,6 +80,11 @@ export class ApiService {
     // Status
     getStatus(): Observable<ConnectionStatus | null> {
         return this.http.get<ApiResponse<ConnectionStatus>>(`${this.baseUrl}/status`)
+            .pipe(map(res => res.data || null));
+    }
+
+    getSystemInfo(): Observable<SystemInfo | null> {
+        return this.http.get<ApiResponse<SystemInfo>>(`${this.baseUrl}/status/info`)
             .pipe(map(res => res.data || null));
     }
 

@@ -104,6 +104,13 @@ body {
   overflow: hidden;
 }
 
+.app-container.kiosk .main-content.kiosk-scrollable {
+  padding: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 // ── Kiosk design tokens (Variant A "Refined Material") ────────────────────────
 // Defined on the kiosk container so both the top bar (app.component) and the
 // routed kiosk throttle component inherit them. Dark overrides follow.

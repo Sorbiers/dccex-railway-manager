@@ -109,6 +109,40 @@ export interface ConnectionStatus {
   power: boolean;
 }
 
+export interface NetworkInterfaceInfo {
+  name: string;
+  addresses: {
+    family: string;
+    address: string;
+    mac: string;
+  }[];
+  wifi?: {
+    ssid?: string;
+    signal?: string;
+  };
+}
+
+export interface StorageInfo {
+  total: number;
+  free: number;
+  used: number;
+  freePercent: number;
+}
+
+export interface SystemInfo {
+  interfaces: NetworkInterfaceInfo[];
+  gateway: {
+    address: string | null;
+    reachable: boolean;
+  };
+  cpu: {
+    cores: number;
+    loadPercent: number;
+  };
+  memory: StorageInfo;
+  disk: StorageInfo | null;
+}
+
 export interface DccCommand {
   type: 'throttle' | 'function' | 'power' | 'emergency' | 'turnout' | 'direction' | 'signal';
   address?: number;

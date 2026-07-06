@@ -1,6 +1,6 @@
 import { Component, inject, signal, effect, PLATFORM_ID, Renderer2 } from '@angular/core';
 import { isPlatformBrowser, DOCUMENT } from '@angular/common';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { NavigationEnd, Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,6 +11,7 @@ import { DccService } from './services/dcc.service';
 import { LayoutService } from './services/layout.service';
 import { IdleService } from './services/idle.service';
 import { NgxGaugeModule } from 'ngx-gauge';
+import { filter } from 'rxjs';
 
 @Component({
   selector: 'app-root',
@@ -37,8 +38,10 @@ export class AppComponent {
   private platformId = inject(PLATFORM_ID);
   private renderer = inject(Renderer2);
   private document = inject(DOCUMENT);
+  private router = inject(Router);
 
   isDarkTheme = signal(false);
+  currentUrl = signal('/');
 
   constructor() {
     // Load theme preference from localStorage
@@ -54,6 +57,14 @@ export class AppComponent {
         this.applyThemeToBody(this.isDarkTheme());
       }
     });
+
+    this.router.events.pipe(filter(event => event instanceof NavigationEnd)).subscribe(event => {
+      this.currentUrl.set((event as NavigationEnd).urlAfterRedirects.split('?')[0]);
+    });
+  }
+
+  isKioskMainRoute(): boolean {
+    return this.currentUrl() === '/';
   }
 
   private applyThemeToBody(isDark: boolean): void {

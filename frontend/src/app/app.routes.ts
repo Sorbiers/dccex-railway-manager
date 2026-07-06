@@ -18,6 +18,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/settings/settings.component').then(m => m.SettingsComponent)
   },
   {
+    path: 'info',
+    loadComponent: () => import('./pages/info/info.component').then(m => m.InfoComponent)
+  },
+  {
     path: '**',
     redirectTo: ''
   }
