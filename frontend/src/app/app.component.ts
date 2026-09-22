@@ -1,8 +1,6 @@
 import { Component, inject, signal, effect, PLATFORM_ID, Renderer2 } from '@angular/core';
 import { isPlatformBrowser, DOCUMENT } from '@angular/common';
 import { NavigationEnd, Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -10,7 +8,6 @@ import { StateService } from './services/state.service';
 import { DccService } from './services/dcc.service';
 import { LayoutService } from './services/layout.service';
 import { IdleService } from './services/idle.service';
-import { NgxGaugeModule } from 'ngx-gauge';
 import { filter } from 'rxjs';
 
 @Component({
@@ -20,12 +17,9 @@ import { filter } from 'rxjs';
     RouterOutlet,
     RouterLink,
     RouterLinkActive,
-    MatToolbarModule,
-    MatButtonModule,
     MatIconModule,
     MatMenuModule,
-    MatTooltipModule,
-    NgxGaugeModule
+    MatTooltipModule
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
@@ -69,7 +63,7 @@ export class AppComponent {
   }
 
   private kioskRouteCanScroll(): boolean {
-    return this.layout.kiosk() && !this.isKioskMainRoute();
+    return !this.isKioskMainRoute();
   }
 
   onKioskScrollStart(event: TouchEvent): void {

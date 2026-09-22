@@ -14,10 +14,9 @@ export interface TurnoutStateDef {
 }
 
 /**
- * Shared throttle control logic + helpers used by both the default and kiosk
- * layouts. Both layout components extend this so their templates can call the
- * same handlers (onSpeedChange, onDirectionChange, function/turnout/signal
- * handlers, dial helpers, etc.).
+ * Shared throttle control logic + helpers for the throttle UI. The throttle
+ * component extends this so its template can call the handlers (onSpeedChange,
+ * onDirectionChange, function/turnout/signal handlers, dial helpers, etc.).
  */
 @Directive()
 export abstract class ThrottleControllerBase {

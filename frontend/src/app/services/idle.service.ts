@@ -9,8 +9,8 @@ import { ApiService } from './api.service';
  *
  * After an idle period the DSI backlight is turned off via the backend
  * `/api/display` endpoint; any touch/key wakes it. The timeout depends on
- * DCC-EX track power: 30 min while powered on, 5 min while off. Only active in
- * kiosk mode. The touch panel keeps reporting while the backlight is off, so a
+ * DCC-EX track power: 30 min while powered on, 5 min while off. Only active on
+ * the physical kiosk panel. The touch panel keeps reporting while the backlight is off, so a
  * tap both wakes the screen and is swallowed by the blank overlay.
  */
 @Injectable({ providedIn: 'root' })
@@ -34,11 +34,13 @@ export class IdleService {
     constructor() {
         if (!isPlatformBrowser(this.platformId)) return;
 
-        // Start/stop with kiosk mode.
+        // Start/stop with the physical kiosk panel only. Blanking drives the
+        // Pi's backlight, so it must never run for a desktop browser that
+        // happens to be pointed at the same backend.
         effect(() => {
-            const kiosk = this.layout.kiosk();
-            if (kiosk && !this.started) this.start();
-            else if (!kiosk && this.started) this.stop();
+            const panel = this.layout.panel();
+            if (panel && !this.started) this.start();
+            else if (!panel && this.started) this.stop();
         });
 
         // Re-arm when track power changes or the "Disable screen off" setting toggles.

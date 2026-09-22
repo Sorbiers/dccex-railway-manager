@@ -1,14 +1,10 @@
-import { Component, inject } from '@angular/core';
-import { LayoutService } from '../../services/layout.service';
-import { ThrottleDefaultComponent } from './throttle-default/throttle-default.component';
+import { Component } from '@angular/core';
 import { ThrottleKioskComponent } from './throttle-kiosk/throttle-kiosk.component';
 
 @Component({
     selector: 'app-main',
     standalone: true,
-    imports: [ThrottleDefaultComponent, ThrottleKioskComponent],
+    imports: [ThrottleKioskComponent],
     templateUrl: './main.component.html'
 })
-export class MainComponent {
-    layout = inject(LayoutService);
-}
+export class MainComponent {}
